@@ -12,6 +12,7 @@ use rat_widget::event::{
     ct_event, try_flow, ConsumedEvent, Dialog, HandleEvent, MenuOutcome, Popup, Regular,
 };
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
+use rat_widget::hover::Hover;
 use rat_widget::layout::layout_middle;
 use rat_widget::menu::{MenuBuilder, MenuStructure, Menubar, MenubarState, Separator};
 use rat_widget::msgdialog::{MsgDialog, MsgDialogState};
@@ -25,7 +26,6 @@ use ratatui::style::Style;
 use ratatui::widgets::{Block, BorderType, Padding};
 use std::fs;
 use std::str::from_utf8;
-use std::time::{Duration, SystemTime};
 
 type AppContext<'a> = rat_salsa::AppContext<'a, GlobalState, MDEvent, Error>;
 
@@ -94,8 +94,8 @@ impl<'a> MenuStructure<'a> for Menu {
                 submenu.item_parsed("Save _as..");
             }
             1 => {
-                submenu.item_parsed("Format Item|Alt-F");
-                submenu.item_parsed("Alt-Format Item|Alt-Shift-F");
+                submenu.item_parsed("Format Item|Ctrl-F");
+                submenu.item_parsed("Alt-Format Item|Ctrl-G");
             }
             2 => {
                 if self.show_ctrl {
@@ -191,6 +191,8 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
             .styles(vec![theme.status_base(), theme.status_base()]);
         status.render(s[1], buf, &mut state.status);
 
+        Hover::new().render(Rect::default(), buf, &mut ctx.g.hover);
+
         let l_fd = layout_middle(
             r[0],
             Constraint::Length(state.menu.bar.item_areas[0].x),
@@ -238,8 +240,8 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
                     Block::bordered()
                         .style(
                             Style::default() //
-                                .fg(theme.scheme().white[2])
-                                .bg(theme.scheme().deepblue[0]),
+                                .fg(theme.s().white[2])
+                                .bg(theme.s().deepblue[0]),
                         )
                         .border_type(BorderType::Rounded)
                         .title_style(Style::new().fg(ctx.g.scheme().bluegreen[0]))
@@ -323,6 +325,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
 
         r = r.or_else_try(|| self.editor.event(event, ctx))?;
 
+        self.editor.auto_hide_files();
         if self.editor.set_active_split() {
             self.editor.sync_views(ctx)?;
         }
@@ -357,11 +360,13 @@ impl MDAppState {
             ct_event!(keycode press Esc) => {
                 if !self.menu.is_focused() {
                     ctx.focus().focus(&self.menu);
-                    Control::Changed
+                    ctx.queue(Control::Changed);
+                    Control::Continue
                 } else {
                     if let Some((_, last_edit)) = self.editor.split_tab.selected() {
                         ctx.focus().focus(last_edit);
-                        Control::Changed
+                        ctx.queue(Control::Changed);
+                        Control::Continue
                     } else {
                         Control::Continue
                     }

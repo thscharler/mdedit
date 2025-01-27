@@ -22,6 +22,7 @@ pub struct MDEdit;
 pub struct MDEditState {
     pub window_cmd: bool,
 
+    pub hidden_files: bool,
     pub split_files: SplitState,
     pub file_list: FileListState,
     pub split_tab: SplitTabState,
@@ -367,12 +368,24 @@ impl MDEditState {
         Ok(())
     }
 
+    /// Autohide file-list if so
+    pub fn auto_hide_files(&mut self) {
+        if !self.file_list.is_focused() && self.hidden_files {
+            self.split_files.hide_split(0);
+        }
+    }
+
     // Hide files
-    pub fn hide_files(&mut self, _ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
-        if self.split_files.is_hidden(0) {
+    pub fn hide_files(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+        if self.hidden_files {
+            self.hidden_files = false;
             self.split_files.show_split(0);
         } else {
+            self.hidden_files = true;
             self.split_files.hide_split(0);
+            if self.file_list.is_focused() {
+                ctx.focus().next();
+            }
         }
         Ok(Control::Changed)
     }

@@ -72,7 +72,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
                     if state.tabbed[idx_split].is_focused() {
                         theme.tabbed_style().focus.expect("style")
                     } else if md.is_focused() {
-                        theme.primary(1)
+                        theme.s().primary(1)
                     } else {
                         theme.tabbed_style().select.expect("style")
                     }

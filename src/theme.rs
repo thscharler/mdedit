@@ -64,129 +64,8 @@ impl DarkTheme {
     }
 
     /// The underlying scheme.
-    pub fn scheme(&self) -> &Scheme {
+    pub fn s(&self) -> &Scheme {
         &self.s
-    }
-
-    /// Create a style from a background color
-    pub fn style(&self, bg: Color) -> Style {
-        self.s.style(bg)
-    }
-
-    /// Create a style from a background color.
-    /// The background color is first run through
-    /// [Scheme::true_dark_color] to ensure a really dark
-    /// color.
-    pub fn true_dark_style(&self, bg: Color) -> Style {
-        self.s.style(self.s.true_dark_color(bg))
-    }
-
-    /// Create a style from a gray-scaled version of
-    /// the given colorl.
-    pub fn grey_style(&self, bg: Color) -> Style {
-        self.s.style(self.s.grey_color(bg))
-    }
-
-    /// Create a style from the given white shade.
-    /// n is `0..=3`
-    pub fn white(&self, n: usize) -> Style {
-        self.s.style(self.s.white[n])
-    }
-
-    /// Create a style from the given black shade.
-    /// n is `0..=3`
-    pub fn black(&self, n: usize) -> Style {
-        self.s.style(self.s.black[n])
-    }
-
-    /// Create a style from the given gray shade.
-    /// n is `0..=3`
-    pub fn gray(&self, n: usize) -> Style {
-        self.s.style(self.s.gray[n])
-    }
-
-    /// Create a style from the given red shade.
-    /// n is `0..=3`
-    pub fn red(&self, n: usize) -> Style {
-        self.s.style(self.s.red[n])
-    }
-
-    /// Create a style from the given orange shade.
-    /// n is `0..=3`
-    pub fn orange(&self, n: usize) -> Style {
-        self.s.style(self.s.orange[n])
-    }
-
-    /// Create a style from the given yellow shade.
-    /// n is `0..=3`
-    pub fn yellow(&self, n: usize) -> Style {
-        self.s.style(self.s.yellow[n])
-    }
-
-    /// Create a style from the given limegreen shade.
-    /// n is `0..=3`
-    pub fn limegreen(&self, n: usize) -> Style {
-        self.s.style(self.s.limegreen[n])
-    }
-
-    /// Create a style from the given green shade.
-    /// n is `0..=3`
-    pub fn green(&self, n: usize) -> Style {
-        self.s.style(self.s.green[n])
-    }
-
-    /// Create a style from the given bluegreen shade.
-    /// n is `0..=3`
-    pub fn bluegreen(&self, n: usize) -> Style {
-        self.s.style(self.s.bluegreen[n])
-    }
-
-    /// Create a style from the given cyan shade.
-    /// n is `0..=3`
-    pub fn cyan(&self, n: usize) -> Style {
-        self.s.style(self.s.cyan[n])
-    }
-
-    /// Create a style from the given blue shade.
-    /// n is `0..=3`
-    pub fn blue(&self, n: usize) -> Style {
-        self.s.style(self.s.blue[n])
-    }
-
-    /// Create a style from the given deepblue shade.
-    /// n is `0..=3`
-    pub fn deepblue(&self, n: usize) -> Style {
-        self.s.style(self.s.deepblue[n])
-    }
-
-    /// Create a style from the given purple shade.
-    /// n is `0..=3`
-    pub fn purple(&self, n: usize) -> Style {
-        self.s.style(self.s.purple[n])
-    }
-
-    /// Create a style from the given magenta shade.
-    /// n is `0..=3`
-    pub fn magenta(&self, n: usize) -> Style {
-        self.s.style(self.s.magenta[n])
-    }
-
-    /// Create a style from the given redpink shade.
-    /// n is `0..=3`
-    pub fn redpink(&self, n: usize) -> Style {
-        self.s.style(self.s.redpink[n])
-    }
-
-    /// Create a style from the given primary shade.
-    /// n is `0..=3`
-    pub fn primary(&self, n: usize) -> Style {
-        self.s.style(self.s.primary[n])
-    }
-
-    /// Create a style from the given secondary shade.
-    /// n is `0..=3`
-    pub fn secondary(&self, n: usize) -> Style {
-        self.s.style(self.s.secondary[n])
     }
 
     /// Focus style
@@ -455,11 +334,11 @@ impl DarkTheme {
     }
 
     pub fn table_header(&self) -> Style {
-        self.style(self.s.blue[2])
+        self.s.style(self.s.blue[2])
     }
 
     pub fn table_footer(&self) -> Style {
-        self.style(self.s.blue[2])
+        self.s.style(self.s.blue[2])
     }
 
     /// Complete ListStyle
@@ -533,8 +412,8 @@ impl DarkTheme {
     pub fn tabbed_style(&self) -> TabbedStyle {
         TabbedStyle {
             style: self.container_border(),
-            tab: Some(self.gray(1)),
-            select: Some(self.gray(3)),
+            tab: Some(self.s.gray(1)),
+            select: Some(self.s.gray(3)),
             focus: Some(self.focus()),
             ..Default::default()
         }
@@ -610,11 +489,11 @@ impl DarkTheme {
     /// ----------------------
 
     pub fn doc_base_color(&self) -> Color {
-        self.s.black[2]
+        self.s.black[3]
     }
 
     pub fn doc_base(&self) -> Style {
-        self.style(self.doc_base_color())
+        self.s.reduced_style(self.doc_base_color())
     }
 
     /// Container border
@@ -659,8 +538,13 @@ impl DarkTheme {
 
     /// Style for LineNumbers.
     pub fn line_nr_style_doc(&self) -> LineNumberStyle {
+        let fg = match self.s.rate_text_color(self.doc_base().bg.expect("bg")) {
+            None => self.s.gray[3],
+            Some(true) => self.s.gray[3],
+            Some(false) => self.s.gray[0],
+        };
         LineNumberStyle {
-            style: self.doc_base().fg(self.s.gray[1]),
+            style: self.doc_base().fg(fg),
             cursor: Some(self.text_select()),
             ..LineNumberStyle::default()
         }
@@ -682,8 +566,8 @@ impl DarkTheme {
     pub fn tabbed_style_doc(&self) -> TabbedStyle {
         TabbedStyle {
             style: self.doc_border(),
-            tab: Some(self.gray(1)),
-            select: Some(self.gray(3)),
+            tab: Some(self.s.gray(1)),
+            select: Some(self.s.gray(3)),
             focus: Some(self.focus()),
             ..Default::default()
         }
