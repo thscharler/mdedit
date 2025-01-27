@@ -3,11 +3,10 @@ use crate::edit::{MDEdit, MDEditState};
 use crate::event::MDEvent;
 use crate::facilities::{Facility, MDFileDialog, MDFileDialogState};
 use crate::global::GlobalState;
+use crate::theme::{dark_themes, DarkTheme};
 use anyhow::Error;
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
-use rat_theme::dark_theme::DarkTheme;
-use rat_theme::dark_themes;
 use rat_theme::scheme::IMPERIAL;
 use rat_widget::event::{
     ct_event, try_flow, ConsumedEvent, Dialog, HandleEvent, MenuOutcome, Popup, Regular,
@@ -25,7 +24,6 @@ use ratatui::prelude::StatefulWidget;
 use ratatui::style::Style;
 use ratatui::widgets::{Block, BorderType, Padding};
 use std::fs;
-use std::rc::Rc;
 use std::str::from_utf8;
 use std::time::{Duration, SystemTime};
 
@@ -39,6 +37,7 @@ mod file_list;
 mod global;
 mod md_file;
 mod split_tab;
+mod theme;
 
 fn main() -> Result<(), Error> {
     setup_logging()?;
@@ -179,25 +178,17 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
             .popup_width(25)
             .popup_block(Block::bordered())
             .popup_placement(Placement::Above)
-            .styles(theme.menu_style())
+            .styles(if state.menu.is_focused() {
+                theme.menu_style()
+            } else {
+                theme.menu_style_hidden()
+            })
             .into_widgets();
         menu.render(s[0], buf, &mut state.menu);
 
         let status = StatusLine::new()
-            .layout([
-                Constraint::Fill(1),
-                Constraint::Length(14),
-                Constraint::Length(7),
-                Constraint::Length(7),
-                Constraint::Length(7),
-            ])
-            .styles(vec![
-                theme.status_base(),
-                theme.deepblue(3),
-                theme.deepblue(2),
-                theme.deepblue(1),
-                theme.deepblue(0),
-            ]);
+            .layout([Constraint::Fill(1), Constraint::Length(14)])
+            .styles(vec![theme.status_base(), theme.status_base()]);
         status.render(s[1], buf, &mut state.status);
 
         let l_fd = layout_middle(
@@ -290,8 +281,6 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         event: &MDEvent,
         ctx: &mut rat_salsa::AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<Control<MDEvent>, Error> {
-        let t0 = SystemTime::now();
-
         let mut r = match event {
             MDEvent::Event(event) => self.crossterm(event, ctx)?,
             MDEvent::Rendered => {
@@ -333,11 +322,6 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         };
 
         r = r.or_else_try(|| self.editor.event(event, ctx))?;
-
-        if r == Control::Changed {
-            let el = t0.elapsed().unwrap_or(Duration::from_nanos(0));
-            self.status.status(4, format!("T {:.0?}", el).to_string());
-        }
 
         if self.editor.set_active_split() {
             self.editor.sync_views(ctx)?;
@@ -444,7 +428,7 @@ impl MDAppState {
             MenuOutcome::MenuActivated(2, 3) => Control::Event(MDEvent::JumpToFiles),
             MenuOutcome::MenuActivated(2, 4) => Control::Event(MDEvent::HideFiles),
             MenuOutcome::MenuSelected(3, n) => {
-                ctx.g.theme = Rc::new(dark_themes()[n].clone());
+                ctx.g.theme = dark_themes()[n].clone();
                 Control::Changed
             }
             MenuOutcome::Activated(4) => Control::Quit,

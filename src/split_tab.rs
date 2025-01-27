@@ -84,7 +84,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
             };
 
             Tabbed::new()
-                .tab_type(TabType::Attached)
+                .tab_type(TabType::Glued)
                 .closeable(true)
                 .styles(theme.tabbed_style())
                 .select_style(select_style)

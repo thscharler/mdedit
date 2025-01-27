@@ -43,7 +43,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDEdit {
             .styles(theme.split_style())
             .mark_offset(1)
             .constraints([Constraint::Length(15), Constraint::Fill(1)])
-            .split_type(SplitType::FullPlain)
+            .split_type(SplitType::FullEmpty)
             .into_widgets();
 
         split.render(area, buf, &mut state.split_files);

@@ -67,8 +67,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDFile {
             .start(state.edit.offset().1 as upos_type)
             .end(state.edit.len_lines())
             .cursor(state.edit.cursor().y)
-            // .relative(true)
-            .styles(theme.line_nr_style());
+            .styles(theme.line_nr_style_doc());
 
         let line_nr_area = Rect::new(area.x, area.y, line_nr.width(), area.height);
         let text_area = Rect::new(
@@ -86,12 +85,8 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDFile {
                     .border_type(BorderType::Rounded)
                     .borders(Borders::RIGHT),
             )
-            .vscroll(
-                Scroll::new()
-                    .start_margin(self.start_margin)
-                    .styles(theme.scroll_style()),
-            )
-            .styles(theme.textarea_style())
+            .vscroll(Scroll::new().start_margin(self.start_margin))
+            .styles(theme.textarea_style_doc())
             .text_style(text_style(ctx))
             .render(text_area, buf, &mut state.edit);
         ctx.set_screen_cursor(state.edit.screen_cursor());
