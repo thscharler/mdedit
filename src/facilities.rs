@@ -1,6 +1,5 @@
 use crate::event::MDEvent;
 use anyhow::Error;
-use crossterm::event::Event;
 use rat_salsa::Control;
 use rat_widget::event::{try_flow, Dialog, FileOutcome, HandleEvent};
 use rat_widget::file_dialog::{FileDialog, FileDialogState, FileDialogStyle};
@@ -10,18 +9,25 @@ use ratatui::layout::Rect;
 use ratatui::widgets::StatefulWidget;
 use std::path::PathBuf;
 
-/// Multi purpose facility.
-pub trait Facility<T, O, A, E> {
+/// Multi-purpose facilities.
+///
+/// Primary use-case is to reuse the same file-dialog for different
+/// scenarios (Open, Save, ...).
+///
+/// This brings the need to configure the file-dialog and to
+/// map its outcomes to some specific action.
+///
+pub trait Facility<T, O, A, E>
+where
+    Self: HandleEvent<A, Dialog, Result<Control<A>, E>>,
+{
     /// Engage with the facility.
-    /// Setup its current workings and set a handler for any possible outcomes.
+    /// Set up its current config and set a handler for any possible outcomes.
     fn engage(
         &mut self,
         init: impl FnOnce(&mut T) -> Result<Control<A>, E>,
         out: fn(O) -> Result<Control<A>, E>,
     ) -> Result<Control<A>, E>;
-
-    /// Handle crossterm events for the facility.
-    fn handle(&mut self, event: &Event) -> Result<Control<A>, E>;
 }
 
 #[derive(Debug, Default)]
@@ -68,21 +74,25 @@ impl Facility<FileDialogState, PathBuf, MDEvent, Error> for MDFileDialogState {
         }
         r
     }
+}
 
-    fn handle(&mut self, event: &Event) -> Result<Control<MDEvent>, Error> {
-        try_flow!(match self.file_dlg.handle(event, Dialog)? {
-            FileOutcome::Ok(path) => {
-                if let Some(handle) = self.handle.take() {
-                    handle(path)?
-                } else {
+impl HandleEvent<MDEvent, Dialog, Result<Control<MDEvent>, Error>> for MDFileDialogState {
+    fn handle(&mut self, event: &MDEvent, _qualifier: Dialog) -> Result<Control<MDEvent>, Error> {
+        if let MDEvent::Event(event) = event {
+            try_flow!(match self.file_dlg.handle(event, Dialog)? {
+                FileOutcome::Ok(path) => {
+                    if let Some(handle) = self.handle.take() {
+                        handle(path)?
+                    } else {
+                        Control::Changed
+                    }
+                }
+                FileOutcome::Cancel => {
                     Control::Changed
                 }
-            }
-            FileOutcome::Cancel => {
-                Control::Changed
-            }
-            r => r.into(),
-        });
+                r => r.into(),
+            });
+        }
         Ok(Control::Continue)
     }
 }

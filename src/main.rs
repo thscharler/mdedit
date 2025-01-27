@@ -311,6 +311,8 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         event: &MDEvent,
         ctx: &mut rat_salsa::AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<Control<MDEvent>, Error> {
+        try_flow!(self.file_dlg.handle(event, Dialog)?);
+
         let mut r = match event {
             MDEvent::Event(event) => self.crossterm(event, ctx)?,
             MDEvent::Rendered => {
@@ -376,7 +378,6 @@ impl MDAppState {
     ) -> Result<Control<MDEvent>, Error> {
         try_flow!(self.error_dlg.handle(event, Dialog));
         try_flow!(self.message_dlg.handle(event, Dialog));
-        try_flow!(self.file_dlg.handle(event)?);
 
         let f = Control::from(ctx.focus_mut().handle(event, Regular));
         ctx.queue(f);
