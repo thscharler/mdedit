@@ -4,6 +4,7 @@ use crate::global::GlobalState;
 use crate::md_file::MDFileState;
 use crate::split_tab::{SplitTab, SplitTabState};
 use crate::AppContext;
+use crate::FocusFlag;
 use anyhow::Error;
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
 use rat_widget::event::{ct_event, try_flow, ConsumedEvent, HandleEvent, Regular};

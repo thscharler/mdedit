@@ -89,7 +89,6 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
                 .styles(theme.tabbed_style())
                 .select_style(select_style)
                 .tabs(state.tabs[idx_split].iter().map(|v| {
-                    let title = v.path.file_name().unwrap_or_default().to_string_lossy();
                     let title = format!(
                         "{}{}",
                         v.path.file_name().unwrap_or_default().to_string_lossy(),

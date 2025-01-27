@@ -2,8 +2,9 @@ use crate::event::MDEvent;
 use crate::global::GlobalState;
 use crate::AppContext;
 use anyhow::Error;
-use crossterm::QueueableCommand;
 use log::warn;
+use rat_markdown::op::md_format;
+use rat_markdown::{parse_md_styles, MarkDown};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
 use rat_widget::event::{HandleEvent, TextOutcome};
@@ -205,7 +206,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
             }
             MDEvent::Event(event) => {
                 // call markdown event-handling instead of regular.
-                let r = match self.edit.handle(event, MarkDown) {
+                let r = match self.edit.handle(event, MarkDown::new(65)) {
                     TextOutcome::TextChanged => self.text_changed(ctx),
                     r => r.into(),
                 };
@@ -321,16 +322,13 @@ impl MDFileState {
 
     // Parse & set styles.
     pub fn parse_markdown(&mut self) {
-        let styles = parse_md_styles(&self.edit);
+        let styles = parse_md_styles(&self.edit.text());
         self.edit.set_styles(styles);
     }
 
     // Format selected table
     pub fn md_format(&mut self, eq_width: bool, ctx: &mut AppContext<'_>) -> Control<MDEvent> {
-        match md_format(
-            &mut self.edit,
-            MDFormatArg::new().table_columns_equal_width(eq_width),
-        ) {
+        match md_format(&mut self.edit, 65, eq_width) {
             TextOutcome::TextChanged => self.text_changed(ctx),
             r => r.into(),
         }

@@ -11,25 +11,31 @@
 ## Ctrl-W - Window navigation
 
 * Ctrl-W Left/Right - Jump between split windows.
+  
 * Ctrl-W Tab/Backtab - Change focus.
-
+  
 * Ctrl-W t - Jump to tabs. Use Left/Right to select a tab.
-* Ctrl-W t - The second time jumps back to the edit. Or just use Tab.
-
-* Ctrl-W s - Jump to the split. Use Left/Right to resize the split.
-  Use Ctrl-Left/Right to move between multiple splits.
-
+  
+* Ctrl-W t - The second time jumps back to the edit. Or just
+  use Tab.
+  
+* Ctrl-W s - Jump to the split. Use Left/Right to resize the
+  split. Use Ctrl-Left/Right to move between multiple splits.
+  
 * Ctrl-W c - Close the current window.
+  
 * Ctrl-W x - Close the current window.
-
+  
 * Ctrl-W d - Divide view, split horizontally.
+  
 * Ctrl-W + - Divide view, split horizontally.
-
+  
 ## Files
 
 * Ctrl+O - Open file.
 * Ctrl+N - New file.
-* Ctrl+S - Save file. (Autosaved when terminal-window looses focus.)
+* Ctrl+S - Save file. (Autosaved when terminal-window looses
+  focus.)
 
 ## Editing
 
@@ -43,16 +49,16 @@
 
 ## Table
 
-* Enter - Line break within the table. At the end creates an empty
-  duplicate of the last row. If you have just the header enter will
-  create the necessary underlines.
+* Enter - Line break within the table. At the end creates an
+  empty duplicate of the last row. If you have just the header
+  enter will create the necessary underlines.
 * Tab/Backtab - Navigate between cells.
 
 ## Formatting
 
 * Ctrl-F - Formats the item at the cursor position, or everything
   selected.
-* Ctrl+G - Alternate format. Currently, formats a table to
-  equal column widths.
+* Ctrl+G - Alternate format. Currently, formats a table to equal
+  column widths.
 * Alt+1..=6 - Make header.
 

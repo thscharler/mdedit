@@ -1,0 +1,16 @@
+[package]
+name = "mdedit"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+crossterm = "0.28"
+ratatui = "0.29"
+cli-clipboard = "0.4"
+anyhow = "1.0"
+log = "0.4.25"
+fern = "0.7"
+rat-salsa = { version = "0.32", path = "../rat-salsa/rat-salsa" }
+rat-widget = { version = "0.37", path = "../rat-salsa/rat-widget" }
+rat-theme = { version = "0.27", path = "../rat-salsa/rat-theme" }
+rat-markdown = { version = "0.1", path = "../rat-salsa/rat-markdown" }
