@@ -13,6 +13,7 @@
 | F2                           | Cheat sheet.                        |
 |                              |                                     |
 | F1                           | This document.                      |
+|                              |                                     |
 
 ## File list
 
@@ -72,6 +73,7 @@ If the file is already open it is selected.
 |                              |                                     |
 | Tab / Backtab                | Indent/Dedent selection.            |
 |                              | Insert tab otherwise.               |
+|                              |                                     |
 
 ## Table
 
@@ -84,6 +86,7 @@ If the file is already open it is selected.
 |                              | necessary underlines.               |
 |                              |                                     |
 | Tab / Backtab                | Navigate between cells.             |
+|                              |                                     |
 
 ## Formatting
 
@@ -97,3 +100,4 @@ If the file is already open it is selected.
 |                              | widths.                             |
 |                              |                                     |
 | Alt+1 .. Alt+6               | Flip header.                        |
+|                              |                                     |

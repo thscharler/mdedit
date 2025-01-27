@@ -5,6 +5,8 @@ use crate::facilities::{Facility, MDFileDialog, MDFileDialogState};
 use crate::global::GlobalState;
 use crate::theme::{dark_themes, DarkTheme};
 use anyhow::Error;
+use dirs::cache_dir;
+use log::{debug, error};
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
 use rat_theme::scheme::IMPERIAL;
@@ -24,8 +26,11 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::StatefulWidget;
 use ratatui::style::Style;
 use ratatui::widgets::{Block, BorderType, Padding};
-use std::fs;
+use std::env::args;
+use std::fs::create_dir_all;
+use std::path::PathBuf;
 use std::str::from_utf8;
+use std::{fs, mem};
 
 type AppContext<'a> = rat_salsa::AppContext<'a, GlobalState, MDEvent, Error>;
 
@@ -42,15 +47,31 @@ mod theme;
 fn main() -> Result<(), Error> {
     setup_logging()?;
 
-    let config = MDConfig {
-        show_ctrl: false,
-        new_line: if cfg!(windows) {
-            "\r\n".to_string()
-        } else {
-            "\n".to_string()
-        },
+    let mut config = MDConfig::load()?;
+
+    let mut args = args();
+    args.next();
+    config.load_file = {
+        let mut load = Vec::new();
+        for arg1 in args {
+            for path in glob::glob(&arg1)? {
+                let mut path = path?;
+                // need __some__ parent directory
+                if path.parent().is_none() || path.parent() == Some(&PathBuf::from("")) {
+                    path = PathBuf::from(".").join(path);
+                }
+                load.push(path);
+            }
+        }
+        load
     };
-    let theme = DarkTheme::new("Imperial".into(), IMPERIAL);
+
+    let theme = dark_themes()
+        .iter()
+        .find(|v| v.name() == config.theme)
+        .cloned()
+        .unwrap_or(DarkTheme::new("Imperial".into(), IMPERIAL));
+
     let mut global = GlobalState::new(config, theme);
 
     let app = MDApp;
@@ -272,9 +293,16 @@ impl HasFocus for MDAppState {
 
 impl AppState<GlobalState, MDEvent, Error> for MDAppState {
     fn init(&mut self, ctx: &mut AppContext<'_>) -> Result<(), Error> {
+        ctx.focus = Some(FocusBuilder::build_for(self));
+
         self.menu.bar.select(Some(0));
         self.menu.focus().set(true);
         self.editor.init(ctx)?;
+
+        for load in mem::take(&mut ctx.g.cfg.load_file) {
+            self.editor.open(&load, ctx)?;
+        }
+
         Ok(())
     }
 
@@ -436,6 +464,12 @@ impl MDAppState {
                 ctx.g.theme = dark_themes()[n].clone();
                 Control::Changed
             }
+            MenuOutcome::MenuActivated(3, n) => {
+                ctx.g.theme = dark_themes()[n].clone();
+                ctx.g.cfg.theme = ctx.g.theme.name().into();
+                error!("{:?}", ctx.g.cfg.store());
+                Control::Changed
+            }
             MenuOutcome::Activated(4) => Control::Quit,
             r => r.into(),
         });
@@ -445,13 +479,20 @@ impl MDAppState {
 }
 
 fn setup_logging() -> Result<(), Error> {
-    // todo: ???
-    _ = fs::remove_file("log.log");
-    fern::Dispatch::new()
-        .format(|out, message, _record| out.finish(format_args!("{}", message)))
-        .level(log::LevelFilter::Debug)
-        .chain(fern::log_file("log.log")?)
-        .apply()?;
+    if let Some(cache) = cache_dir() {
+        let log_path = cache.join("mdedit");
+        if !log_path.exists() {
+            create_dir_all(&log_path)?;
+        }
+
+        let log_file = log_path.join("log.log");
+        _ = fs::remove_file(&log_file);
+        fern::Dispatch::new()
+            .format(|out, message, _record| out.finish(format_args!("{}", message)))
+            .level(log::LevelFilter::Debug)
+            .chain(fern::log_file(&log_file)?)
+            .apply()?;
+    }
     Ok(())
 }
 

@@ -218,9 +218,6 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
                 self.split(ctx)?;
                 Control::Changed
             }
-            MDEvent::CfgShowCtrl => Control::Changed,
-            MDEvent::CfgNewline => Control::Changed,
-
             MDEvent::JumpToFiles => self.jump_to_file(ctx)?,
             MDEvent::HideFiles => self.hide_files(ctx)?,
 

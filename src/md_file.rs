@@ -2,7 +2,7 @@ use crate::event::MDEvent;
 use crate::global::GlobalState;
 use crate::AppContext;
 use anyhow::Error;
-use log::warn;
+use log::{debug, warn};
 use rat_markdown::op::md_format;
 use rat_markdown::{parse_md_styles, MarkDown};
 use rat_salsa::timer::{TimerDef, TimerHandle};
@@ -224,11 +224,12 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
             }
             MDEvent::CfgNewline => {
                 self.edit.set_newline(ctx.g.cfg.new_line.as_str());
-                Control::Continue
+                Control::Changed
             }
             MDEvent::CfgShowCtrl => {
+                debug!("show control rcv");
                 self.edit.set_show_ctrl(ctx.g.cfg.show_ctrl);
-                Control::Continue
+                Control::Changed
             }
             _ => Control::Continue,
         };
