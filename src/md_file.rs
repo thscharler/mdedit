@@ -1,13 +1,15 @@
 use crate::event::MDEvent;
 use crate::global::GlobalState;
 use crate::AppContext;
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use log::{debug, warn};
+use pulldown_cmark::{Event, Options, Parser, Tag};
 use rat_markdown::op::md_format;
-use rat_markdown::{parse_md_styles, MarkDown};
+use rat_markdown::styles::{parse_md_styles, MDStyle};
+use rat_markdown::MarkDown;
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
-use rat_widget::event::{HandleEvent, TextOutcome};
+use rat_widget::event::{ct_event, ConsumedEvent, HandleEvent, TextOutcome};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
 use rat_widget::line_number::{LineNumberState, LineNumbers};
 use rat_widget::scrolled::Scroll;
@@ -201,11 +203,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
             }
             MDEvent::Event(event) => {
                 // call markdown event-handling instead of regular.
-                let r = match self.edit.handle(event, MarkDown::new(65)) {
+                let mut r = match self.edit.handle(event, MarkDown::new(65)) {
                     TextOutcome::TextChanged => self.text_changed(ctx),
                     r => r.into(),
                 };
-
                 if self.edit.is_focused() && r == Control::Changed {
                     let cursor = self.edit.cursor();
                     let sel = self.edit.selection();
@@ -219,6 +220,11 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                         format!("{}:{}|{}", cursor.x, cursor.y, sel_len),
                     )));
                 }
+
+                r = r.or_else_try(|| match event {
+                    ct_event!(key press CONTROL-'l') => self.follow_link(),
+                    _ => Ok(Control::Continue),
+                })?;
 
                 r
             }
@@ -239,6 +245,36 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
 }
 
 impl MDFileState {
+    /// Follow the link at the cursor.
+    fn follow_link(&self) -> Result<Control<MDEvent>, Error> {
+        let pos = self.edit.byte_at(self.edit.cursor());
+        let Some(link_range) = self.edit.style_match(pos.start, MDStyle::Link.into()) else {
+            return Ok(Control::Continue);
+        };
+
+        let link_txt = self.edit.str_slice_byte(link_range);
+        let mut p = Parser::new_ext(link_txt.as_ref(), Options::empty()).into_iter();
+        for e in p {
+            match e {
+                Event::Start(Tag::Link { dest_url, .. }) => {
+                    if !dest_url.starts_with("/") && dest_url.ends_with(".md") {
+                        if let Some(parent) = self.path.parent() {
+                            let path = parent.join(dest_url.as_ref());
+                            return Ok(Control::Event(MDEvent::SelectOrOpen(path)));
+                        } else {
+                            return Err(anyhow!("Can't locate current file??"));
+                        }
+                    } else {
+                        return Err(anyhow!("Can't follow this link."));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        Ok(Control::Continue)
+    }
+
     // New editor with fresh file.
     pub fn new_file(path: &Path, ctx: &mut AppContext<'_>) -> Self {
         let mut path = path.to_path_buf();
