@@ -128,10 +128,10 @@ fn text_style(ctx: &mut RenderContext<'_, GlobalState>) -> [Style; 34] {
         Style::default().fg(ctx.g.scheme().orange[3]), // DefinitionListTitle
         Style::default().fg(ctx.g.scheme().orange[2]), // DefinitionListDefinition
         //
-        Style::default(),                            // Table
-        Style::default().fg(ctx.g.scheme().gray[3]), // Table-Head
-        Style::default().fg(ctx.g.scheme().gray[3]), // Table-Row
-        Style::default().fg(ctx.g.scheme().gray[3]), // Table-Cell
+        Style::default(),                                 // Table
+        Style::default().fg(ctx.g.scheme().secondary[1]), // Table-Head
+        Style::default(),                                 // Table-Row
+        Style::default(),                                 // Table-Cell
         //
         Style::default().fg(ctx.g.scheme().white[0]).italic(), // Emphasis
         Style::default().fg(ctx.g.scheme().white[3]).bold(),   // Strong

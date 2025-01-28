@@ -83,6 +83,12 @@ If the file is already open it is selected instead.
 | Alt+1..6                     | Toggle header.                      |
 | '_' / '*' / '~' + Selection  | Wrap the selected text with the     |
 |                              | markup character.                   |
+| Alt+C                        | Add code quotes.                    |
+| Alt+I                        | Add image link.                     |
+| Alt+L                        | Add link.                           |
+| Alt+K                        | Add reference link.                 |
+| Alt+R                        | Add reference.                      |
+| Alt+F                        | Add footnote.                       |
 |                              |                                     |
 | any bracket + Selection      | Wrap the selected text with the     |
 |                              | bracket.                            |
@@ -92,7 +98,7 @@ If the file is already open it is selected instead.
 | Key                          | Description                         |
 |------------------------------|-------------------------------------|
 | Any text                     | Will not maintain the table         |
-|                              | delimiters, but use Ctrl+F / Ctrl+G |
+|                              | delimiters, use Ctrl+F / Ctrl+G     |
 |                              | to reformat when done.              |
 |                              |                                     |
 | Enter                        | Line break within the table.        |
