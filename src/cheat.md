@@ -1,24 +1,25 @@
+
 # Github Flavored Markup
 
-# General
+## General
 
 Up to three leading spaces still work as expected. The fourth
 makes everything a code block.
 
-# Thematic break {#fff .as .ddf fjfjj}
+## Thematic break {#fff .as .ddf fjfjj}
 
 At least 3 *, - or _ form a thematic break. Spaces inbetween
 are ok.
 
-# Headings I
+## Headings I
 
 One to six # make a heading.
 
-# Headings II
+## Headings II
 
 Underlining with = makes H1, underlining with - makes a H2.
 
-# Code blocks
+## Code blocks
 
 * Indent at least by 4.
 
@@ -39,49 +40,49 @@ Or inline `code`.
     CODE CODE
     CODE CODE
 
-# HTML blocks
+## HTML blocks
 
 Use tags.
 
-# Links
-
 ## Links
+
+### Links
 
 [link](/link_to "title")  
 [link](</link to> "title")  
 <mail:anonymous@example.org>  
 <http://other_link.example.org>
 
-## Links to reference
+### Links to reference
 
 [use_ref][some]  
 [some]
 
-## Link references
+### Link references
 
 [some]: /links-somewhere
 
-## Images
+### Images
 
 Same as links with leading !
 
 ![foo](/link_to_image)  
 ...
 
-## Footnotes
+### Footnotes
 
 [^1]
 
 [^1]: Footnote
 
-# Tables
+## Tables
 
 | header   | :left      | right: | :center: |
 |----------|------------|--------|----------|
 | text     | text       | text   | text     |
 | **bold** | _emphasis_ |        |          |
 
-# Block quote
+## Block quote
 
 > Quote Quote Quote
 
@@ -93,7 +94,7 @@ and also
 > [!WARNING]  
 > [!CAUTION]
 
-# List
+## List
 
 * Bullet
 * Bullet
