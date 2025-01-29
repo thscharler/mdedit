@@ -10,4 +10,4 @@ This application is built with [rat-salsa][refRatSalsa].
 
 ![image][refMDEditGif]
 
-[refMDEditGif]: https://github.com/thscharler/mdedit/blob/master/mdedit/mdedit.gif?raw=true
+[refMDEditGif]: https://github.com/thscharler/mdedit/blob/master/mdedit.gif?raw=true
