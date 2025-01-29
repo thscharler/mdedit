@@ -2,6 +2,7 @@ use crate::event::MDEvent;
 use crate::fs_structure::FileSysStructure;
 use crate::global::GlobalState;
 use anyhow::Error;
+use log::debug;
 use rat_salsa::{AppContext, AppState, AppWidget, Control, RenderContext};
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
 use rat_widget::event::{

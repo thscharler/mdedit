@@ -1,5 +1,5 @@
 use crate::config::MDConfig;
-use crate::edit::{MDEdit, MDEditState};
+use crate::editor::{MDEdit, MDEditState};
 use crate::event::MDEvent;
 use crate::facilities::{Facility, MDFileDialog, MDFileDialogState};
 use crate::global::GlobalState;
@@ -36,7 +36,7 @@ use std::{fs, mem};
 type AppContext<'a> = rat_salsa::AppContext<'a, GlobalState, MDEvent, Error>;
 
 mod config;
-mod edit;
+mod editor;
 mod event;
 mod facilities;
 mod file_list;
@@ -580,7 +580,7 @@ fn setup_logging() -> Result<(), Error> {
         _ = fs::remove_file(&log_file);
         fern::Dispatch::new()
             .format(|out, message, _record| out.finish(format_args!("{}", message)))
-            .level(log::LevelFilter::Debug)
+            .level(log::LevelFilter::Warn)
             .chain(fern::log_file(&log_file)?)
             .apply()?;
     }

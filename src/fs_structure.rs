@@ -1,6 +1,7 @@
 use anyhow::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 #[derive(Debug, Default)]
 pub struct FileSysStructure {
@@ -21,6 +22,8 @@ impl FileSysStructure {
     }
 
     pub fn load_filesys(&mut self, path: &Path) -> Result<(), Error> {
+        let et = SystemTime::now();
+
         let new_root = if let Some(v) = find_root(path) {
             v
         } else {
@@ -49,7 +52,8 @@ impl FileSysStructure {
         self.dirs.push(self.root.clone());
         self.display.push(self.name.clone());
 
-        fs_recurse(&self.root, "", &mut self.dirs, &mut self.display)?;
+        // fs_recurse(&self.root, "", &mut self.dirs, &mut self.display)?;
+        fs_recurse3(&self.root, "", &mut self.dirs, &mut self.display)?;
 
         Ok(())
     }
@@ -123,55 +127,107 @@ fn cargo_name(cargo_dir: &Path) -> Result<Option<String>, Error> {
     Ok(None)
 }
 
-fn fs_recurse(
+fn fs_recurse3(
     dir: &Path,
-    prefix: &str,
+    _prefix: &str,
     dirs: &mut Vec<PathBuf>,
     display: &mut Vec<String>,
 ) -> Result<(), Error> {
-    let mut tmp = Vec::new();
+    #[derive(Debug, Default)]
+    struct Tree {
+        path: PathBuf,
+        name: String,
+        items: Vec<Tree>,
+    }
 
-    for f in fs::read_dir(&dir)? {
-        let f = f?;
-        // todo: proper .gitignore support
-        if let Some(f_name) = f.path().file_name() {
-            let f_name = f_name.to_string_lossy();
-            if f_name == ".git" || f_name == "target" {
-                continue;
+    let mut tree = Tree::default();
+
+    let walk = ignore::WalkBuilder::new(dir)
+        .standard_filters(true) //
+        .build();
+    for w in walk {
+        let w = w?;
+        let next = w.path().strip_prefix(dir)?;
+
+        let Some(parent) = next.parent() else {
+            continue;
+        };
+
+        let mut branch = &mut tree;
+        for c in parent.components() {
+            let c_str = c.as_os_str().to_string_lossy();
+            let c_str = c_str.as_ref();
+
+            let found = branch.items.iter().position(|v| v.name == c_str);
+            if let Some(found) = found {
+                branch = &mut branch.items[found];
+            } else {
+                let new = Tree {
+                    path: parent.to_path_buf(),
+                    name: c_str.to_string(),
+                    items: Vec::new(),
+                };
+                branch.items.push(new);
+                branch = branch.items.last_mut().expect("last");
             }
-        }
-
-        if f.path().is_dir() {
-            tmp.push(f.path().to_path_buf());
         }
     }
 
-    tmp.sort();
+    let mut stack = Vec::new();
 
-    let len = tmp.len();
-    for (i, f) in tmp.into_iter().enumerate() {
-        dirs.push(f.clone());
+    #[derive(Debug)]
+    struct TreeStack<'a> {
+        branch: &'a Tree,
+        idx: usize,
+        prefix: String,
+    }
 
-        let name = if let Some(name) = f.file_name() {
-            name.to_string_lossy().to_string()
-        } else {
-            "???".to_string()
+    stack.push(TreeStack {
+        branch: &tree,
+        idx: 0,
+        prefix: "".to_string(),
+    });
+
+    loop {
+        let Some(mut v) = stack.pop() else {
+            break;
         };
 
-        let f_display = if i + 1 == len {
-            format!("{}└{}", prefix, name)
-        } else {
-            format!("{}├{}", prefix, name)
-        };
-        display.push(f_display);
+        if v.idx >= v.branch.items.len() {
+            continue;
+        }
 
-        let next_prefix = if i + 1 == len {
-            format!("{} ", prefix)
+        if v.idx + 1 == v.branch.items.len() {
+            let b = &v.branch.items[v.idx];
+            dirs.push(dir.join(&b.path));
+            display.push(format!("{}└{}", v.prefix, b.name));
         } else {
-            format!("{}│", prefix)
+            let b = &v.branch.items[v.idx];
+            dirs.push(dir.join(&b.path));
+            display.push(format!("{}├{}", v.prefix, b.name));
+        }
+
+        let next = if v.idx + 1 == v.branch.items.len() {
+            TreeStack {
+                branch: &v.branch.items[v.idx],
+                idx: 0,
+                prefix: format!("{} ", v.prefix),
+            }
+        } else {
+            TreeStack {
+                branch: &v.branch.items[v.idx],
+                idx: 0,
+                prefix: format!("{}│", v.prefix),
+            }
         };
 
-        fs_recurse(&f, &next_prefix, dirs, display)?
+        v.idx += 1;
+        if v.idx < v.branch.items.len() {
+            stack.push(v);
+        }
+        if next.branch.items.len() > 0 {
+            stack.push(next);
+        }
     }
 
     Ok(())
