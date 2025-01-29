@@ -286,7 +286,7 @@ impl DarkTheme {
     /// Complete MenuStyle
     pub fn menu_style_hidden(&self) -> MenuStyle {
         let mut style = self.status_base();
-        style = style.fg(self.s.black[2]);
+        style = style.fg(self.s.gray[0]);
 
         MenuStyle {
             style,
@@ -510,7 +510,7 @@ impl DarkTheme {
     /// ----------------------
 
     pub fn doc_base_color(&self) -> Color {
-        self.s.black[3]
+        self.s.true_dark_color(self.s.green[0])
     }
 
     pub fn doc_base(&self) -> Style {

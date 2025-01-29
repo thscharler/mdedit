@@ -38,6 +38,7 @@ pub enum MDEvent {
     Close,
     CloseAt(usize, usize),
     SelectAt(usize, usize),
+    StoreConfig,
 }
 
 impl From<RenderedEvent> for MDEvent {

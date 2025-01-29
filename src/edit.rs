@@ -7,8 +7,8 @@ use crate::AppContext;
 use crate::FocusFlag;
 use anyhow::Error;
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
-use rat_widget::event::{try_flow, ConsumedEvent, HandleEvent, Regular};
-use rat_widget::focus::{impl_has_focus, FocusBuilder, HasFocus};
+use rat_widget::event::{try_flow, ConsumedEvent, HandleEvent, Outcome, Regular};
+use rat_widget::focus::{impl_has_focus, HasFocus};
 use rat_widget::splitter::{Split, SplitState, SplitType};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Rect};
@@ -43,7 +43,10 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDEdit {
         let (split, split_overlay) = Split::horizontal()
             .styles(theme.split_style())
             .mark_offset(1)
-            .constraints([Constraint::Length(15), Constraint::Fill(1)])
+            .constraints([
+                Constraint::Length(ctx.g.cfg.file_split_at),
+                Constraint::Fill(1),
+            ])
             .split_type(SplitType::FullEmpty)
             .into_widgets();
 
@@ -84,7 +87,14 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
     ) -> Result<Control<MDEvent>, Error> {
         let mut r = match event {
             MDEvent::Event(event) => {
-                try_flow!(self.split_files.handle(event, Regular));
+                try_flow!(match self.split_files.handle(event, Regular) {
+                    Outcome::Changed => {
+                        ctx.g.cfg.file_split_at = self.split_files.area_len(0);
+                        ctx.queue(Control::Event(MDEvent::StoreConfig));
+                        Control::Changed
+                    }
+                    r => r.into(),
+                });
                 Control::Continue
             }
             MDEvent::New(p) => self.new(p, ctx)?,
@@ -271,6 +281,9 @@ impl MDEditState {
     ) -> Result<Control<MDEvent>, Error> {
         if let Some(pos) = self.split_tab.selected_pos() {
             self.split_tab.close((pos.0, pos.1), ctx)?;
+            if let Some((idx, _)) = self.split_tab.selected() {
+                self.split_tab.select(idx, ctx);
+            }
             Ok(Control::Changed)
         } else {
             Ok(Control::Continue)
@@ -325,9 +338,11 @@ impl MDEditState {
             r = Control::Changed;
         }
         if !self.file_list.f_sys.is_focused() {
+            self.file_list.f_sys.set_popup_active(true);
             ctx.focus().focus(&self.file_list.f_sys);
             r = Control::Changed;
         } else {
+            self.file_list.f_sys.set_popup_active(false);
             if let Some((_, last_edit)) = self.split_tab.selected() {
                 ctx.focus().focus(last_edit);
                 r = Control::Changed;

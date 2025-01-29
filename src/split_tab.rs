@@ -247,12 +247,18 @@ impl SplitTabState {
                     let new_tab = if sel_tab >= pos.1 {
                         if sel_tab > 0 {
                             Some(sel_tab - 1)
+                        } else if self.tabs[pos.0].len() > 0 {
+                            Some(0)
                         } else {
                             None
                         }
                     } else {
                         if sel_tab == 0 {
-                            None
+                            if self.tabs[pos.0].len() > 0 {
+                                Some(0)
+                            } else {
+                                None
+                            }
                         } else {
                             Some(sel_tab)
                         }
@@ -268,12 +274,18 @@ impl SplitTabState {
                         let new_split = if sel_split >= pos.0 {
                             if sel_split > 0 {
                                 Some(sel_split - 1)
+                            } else if self.tabbed.len() > 0 {
+                                Some(0)
                             } else {
                                 None
                             }
                         } else {
                             if sel_split == 0 {
-                                None
+                                if self.tabbed.len() > 0 {
+                                    Some(0)
+                                } else {
+                                    None
+                                }
                             } else {
                                 Some(sel_split)
                             }

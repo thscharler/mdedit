@@ -1,5 +1,4 @@
 use anyhow::Error;
-use log::debug;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -33,7 +32,7 @@ impl FileSysStructure {
         }
 
         self.name = String::default();
-        self.root = path.to_path_buf();
+        self.root = new_root;
         self.dirs.clear();
         self.display.clear();
 
@@ -44,8 +43,11 @@ impl FileSysStructure {
         } else if let Some(v) = self.root.file_name() {
             self.name = v.to_string_lossy().to_string();
         } else {
-            self.name = "".to_string();
+            self.name = ".".to_string();
         }
+
+        self.dirs.push(self.root.clone());
+        self.display.push(self.name.clone());
 
         fs_recurse(&self.root, "", &mut self.dirs, &mut self.display)?;
 
@@ -84,7 +86,7 @@ fn mdbook_name(mdbook_dir: &Path) -> Result<Option<String>, Error> {
     let config_str = fs::read_to_string(mdbook)?;
 
     let toml = config_str.parse::<toml::Value>()?;
-    if let Some(package) = toml.as_table().expect("book").get("package") {
+    if let Some(package) = toml.as_table().expect("table").get("book") {
         if let Some(table) = package.as_table() {
             for (key, val) in table.iter() {
                 match key.as_str() {
@@ -174,30 +176,23 @@ fn fs_recurse(
 }
 
 fn find_root(path: &Path) -> Option<PathBuf> {
-    debug!("find root for {:?}", path);
-
     let mut parent = if path.is_relative() {
         PathBuf::from(".").join(path)
     } else {
         path.to_path_buf()
     };
 
-    debug!("find root2 for {:?}", path);
-
     loop {
         let cargo_toml = parent.join("Cargo.toml");
         if cargo_toml.exists() {
-            debug!("found cargo");
             return Some(parent);
         }
         let book_toml = parent.join("book.toml");
         if book_toml.exists() {
-            debug!("found book");
             return Some(parent);
         }
 
         if let Some(v) = parent.parent() {
-            debug!("to parent {:?}", v);
             parent = v.to_path_buf();
         } else {
             return None;

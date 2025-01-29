@@ -7,17 +7,19 @@ use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
 use rat_widget::event::{
     ct_event, try_flow, ChoiceOutcome, HandleEvent, MenuOutcome, Popup, Regular,
 };
-use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
+use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::list::selection::RowSelection;
 use rat_widget::list::{List, ListState};
 use rat_widget::menu::{PopupMenu, PopupMenuState};
 use rat_widget::popup::{Placement, PopupConstraint};
 use rat_widget::scrolled::Scroll;
-use rat_widget::util::revert_style;
+use rat_widget::util::{revert_style, union_non_empty};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Alignment, Constraint, Layout, Position, Rect};
+use ratatui::prelude::Style;
 use ratatui::text::Line;
-use ratatui::widgets::{Block, StatefulWidget, Widget};
+use ratatui::widgets::{Block, StatefulWidget, StatefulWidgetRef, Widget};
+use std::cmp::{max, min};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Default)]
@@ -60,6 +62,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
         ctx: &mut RenderContext<'_, GlobalState>,
     ) -> Result<(), Error> {
         let theme = &ctx.g.theme;
+        let scheme = &ctx.g.theme.s();
 
         let l_file_list = Layout::vertical([
             Constraint::Length(1),
@@ -73,11 +76,13 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
         buf.set_style(l_file_list[0], theme.container_base());
 
         Line::from(state.sys.name.as_str())
-            .style(ctx.g.theme.container_base())
+            .style(theme.container_base().fg(scheme.green[2]))
             .render(l_file_list[1], buf);
 
+        let popup_len = min(l_file_list[4].height, state.sys.dirs.len() as u16);
+
         let (choice, choice_popup) = Choice::new()
-            .styles(ctx.g.theme.choice_style_tools())
+            .styles(theme.choice_style_tools())
             .items(
                 state
                     .sys
@@ -88,11 +93,11 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
             )
             .popup_scroll(Scroll::new())
             .popup_placement(Placement::Below)
-            .popup_len(10)
+            .popup_len(popup_len)
             .behave_select(ChoiceSelect::MouseClick)
             .behave_close(ChoiceClose::SingleClick)
             .into_widgets();
-        choice.render(l_file_list[2], buf, &mut state.f_sys);
+        choice.render_ref(l_file_list[2], buf, &mut state.f_sys);
 
         buf.set_style(l_file_list[3], theme.container_base());
 
@@ -158,9 +163,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
 impl HasFocus for FileListState {
     fn build(&self, builder: &mut FocusBuilder) {
         let tag = builder.start(self);
-        builder.enable_log();
-        builder.widget_navigate(&self.f_sys, Navigation::Leave);
-        builder.disable_log();
+        builder.widget(&self.f_sys);
         builder.widget(&self.file_list);
         builder.end(tag);
     }
@@ -214,6 +217,11 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
                     }
                     r => r.into(),
                 });
+
+                if !self.f_sys.is_focused() {
+                    // TODO: why is this necessary??
+                    self.f_sys.set_popup_active(false);
+                }
 
                 try_flow!(match self.f_sys.handle(event, Popup) {
                     ChoiceOutcome::Value => {
@@ -302,7 +310,7 @@ impl FileListState {
         self.sys.load_current(dir)?;
 
         self.f_sys.set_value(self.sys.files_dir.clone());
-        self.f_sys.scroll_to_selected();
+        self.f_sys.set_offset(0);
 
         if self.sys.files.len() > 0 {
             if let Some(sel) = self.file_list.selected() {
@@ -324,7 +332,7 @@ impl FileListState {
         self.sys.load(dir)?;
 
         self.f_sys.set_value(self.sys.files_dir.clone());
-        self.f_sys.scroll_to_selected();
+        self.f_sys.set_offset(0);
 
         if self.sys.files.len() > 0 {
             if let Some(sel) = self.file_list.selected() {

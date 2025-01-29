@@ -335,6 +335,8 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 let mut r = match &event {
                     ct_event!(resized) => Control::Changed,
                     ct_event!(key press CONTROL-'q') => Control::Quit,
+                    ct_event!(key press CONTROL-'e') => Control::Event(MDEvent::Close),
+                    ct_event!(keycode press CONTROL-F(4)) => Control::Event(MDEvent::Close),
                     ct_event!(key press CONTROL-'n') => Control::Event(MDEvent::MenuNew),
                     ct_event!(key press CONTROL-'o') => Control::Event(MDEvent::MenuOpen),
                     ct_event!(key press CONTROL-'s') => Control::Event(MDEvent::Save),
@@ -390,6 +392,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 },
                 |p| Ok(Control::Event(MDEvent::SaveAs(p))),
             )?,
+            MDEvent::StoreConfig => {
+                error!("{:?}", ctx.g.cfg.store());
+                Control::Continue
+            }
             _ => Control::Continue,
         };
 
@@ -426,16 +432,12 @@ impl MDAppState {
             ct_event!(keycode press Left) => Control::Event(MDEvent::PrevEditSplit),
             ct_event!(keycode press Right) => Control::Event(MDEvent::NextEditSplit),
             ct_event!(keycode press Tab) => {
-                ctx.focus().enable_log();
                 ctx.focus().next_force();
-                ctx.focus().disable_log();
                 ctx.queue(Control::Changed);
                 Control::Continue
             }
             ct_event!(keycode press SHIFT-BackTab) => {
-                ctx.focus().enable_log();
                 ctx.focus().prev_force();
-                ctx.focus().disable_log();
                 ctx.queue(Control::Changed);
                 Control::Continue
             }
@@ -518,7 +520,7 @@ impl MDAppState {
             MenuOutcome::MenuActivated(3, n) => {
                 ctx.g.theme = dark_themes()[n].clone();
                 ctx.g.cfg.theme = ctx.g.theme.name().into();
-                error!("{:?}", ctx.g.cfg.store());
+                ctx.queue(Control::Event(MDEvent::StoreConfig));
                 Control::Changed
             }
             MenuOutcome::Activated(4) => Control::Quit,
