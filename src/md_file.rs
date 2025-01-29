@@ -253,7 +253,7 @@ impl MDFileState {
         };
 
         let link_txt = self.edit.str_slice_byte(link_range);
-        let mut p = Parser::new_ext(link_txt.as_ref(), Options::empty()).into_iter();
+        let p = Parser::new_ext(link_txt.as_ref(), Options::empty()).into_iter();
         for e in p {
             match e {
                 Event::Start(Tag::Link { dest_url, .. }) => {

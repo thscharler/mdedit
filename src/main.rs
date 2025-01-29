@@ -11,7 +11,7 @@ use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
 use rat_theme::scheme::IMPERIAL;
 use rat_widget::event::{
-    ct_event, try_flow, ConsumedEvent, Dialog, HandleEvent, MenuOutcome, Popup, Regular,
+    ct_event, try_flow, ConsumedEvent, Dialog, HandleEvent, MenuOutcome, Popup,
 };
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::hover::Hover;
@@ -26,6 +26,7 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::StatefulWidget;
 use ratatui::style::Style;
 use ratatui::widgets::{Block, BorderType, Padding};
+use std::cmp::max;
 use std::env::args;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
@@ -39,6 +40,7 @@ mod edit;
 mod event;
 mod facilities;
 mod file_list;
+mod fs_structure;
 mod global;
 mod md_file;
 mod split_tab;
@@ -131,6 +133,7 @@ impl<'a> MenuStructure<'a> for Menu {
                 }
                 submenu.separator(Separator::Dotted);
                 submenu.item_parsed("_Split view|Ctrl-W D");
+                submenu.item_parsed("_Jump to Tree|F4");
                 submenu.item_parsed("_Jump to File|F5");
                 submenu.item_parsed("_Hide files|F6");
             }
@@ -153,6 +156,8 @@ pub struct MDAppState {
     pub menu: MenubarState,
     pub status: StatusLineState,
 
+    pub window_cmd: bool,
+
     pub message_dlg: MsgDialogState,
     pub error_dlg: MsgDialogState,
     pub file_dlg: MDFileDialogState,
@@ -164,6 +169,7 @@ impl Default for MDAppState {
             editor: MDEditState::default(),
             menu: MenubarState::named("menu"),
             status: Default::default(),
+            window_cmd: false,
             message_dlg: Default::default(),
             error_dlg: Default::default(),
             file_dlg: Default::default(),
@@ -300,7 +306,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         self.editor.init(ctx)?;
 
         for load in mem::take(&mut ctx.g.cfg.load_file) {
-            self.editor.open(&load, ctx)?;
+            _ = self.editor.open(&load, ctx)?;
         }
 
         Ok(())
@@ -314,7 +320,41 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         try_flow!(self.file_dlg.handle(event, Dialog)?);
 
         let mut r = match event {
-            MDEvent::Event(event) => self.crossterm(event, ctx)?,
+            MDEvent::Event(event) => {
+                try_flow!(self.error_dlg.handle(event, Dialog));
+                try_flow!(self.message_dlg.handle(event, Dialog));
+
+                // ^W window commands
+                if self.window_cmd {
+                    try_flow!(self.window_cmd(event, ctx)?);
+                }
+
+                ctx.focus_event(event);
+
+                // regular global
+                let mut r = match &event {
+                    ct_event!(resized) => Control::Changed,
+                    ct_event!(key press CONTROL-'q') => Control::Quit,
+                    ct_event!(key press CONTROL-'n') => Control::Event(MDEvent::MenuNew),
+                    ct_event!(key press CONTROL-'o') => Control::Event(MDEvent::MenuOpen),
+                    ct_event!(key press CONTROL-'s') => Control::Event(MDEvent::Save),
+                    ct_event!(keycode press Esc) => self.flip_esc_focus(ctx)?,
+                    ct_event!(keycode press F(1)) => self.show_help(ctx)?,
+                    ct_event!(keycode press F(2)) => self.show_cheat(ctx)?,
+                    ct_event!(keycode press F(4)) => Control::Event(MDEvent::JumpToTree),
+                    ct_event!(keycode press F(5)) => Control::Event(MDEvent::JumpToFiles),
+                    ct_event!(keycode press F(6)) => Control::Event(MDEvent::HideFiles),
+                    ct_event!(key press CONTROL-'w') => {
+                        self.window_cmd = true;
+                        Control::Changed
+                    }
+                    ct_event!(focus_lost) => Control::Event(MDEvent::Save),
+                    _ => Control::Continue,
+                };
+
+                r = r.or_else_try(|| self.handle_menu(event, ctx))?;
+                r
+            }
             MDEvent::Rendered => {
                 // rebuild keyboard + mouse focus
                 ctx.focus = Some(FocusBuilder::rebuild_for(self, ctx.focus.take()));
@@ -355,9 +395,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
 
         r = r.or_else_try(|| self.editor.event(event, ctx))?;
 
+        // global auto sync
         self.editor.auto_hide_files();
-        if self.editor.set_active_split() {
-            self.editor.sync_views(ctx)?;
+        if self.editor.establish_active_split() {
+            self.editor.sync_file_list(ctx)?;
         }
 
         Ok(r)
@@ -371,60 +412,68 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
 }
 
 impl MDAppState {
-    fn crossterm(
+    fn window_cmd(
         &mut self,
         event: &crossterm::event::Event,
         ctx: &mut AppContext<'_>,
     ) -> Result<Control<MDEvent>, Error> {
-        try_flow!(self.error_dlg.handle(event, Dialog));
-        try_flow!(self.message_dlg.handle(event, Dialog));
-
-        let f = Control::from(ctx.focus_mut().handle(event, Regular));
-        ctx.queue(f);
-
-        // regular global
-        let mut r = match &event {
-            ct_event!(resized) => Control::Changed,
-            ct_event!(key press CONTROL-'q') => Control::Quit,
-            ct_event!(keycode press Esc) => {
-                if !self.menu.is_focused() {
-                    ctx.focus().focus(&self.menu);
-                    ctx.queue(Control::Changed);
-                    Control::Continue
-                } else {
-                    if let Some((_, last_edit)) = self.editor.split_tab.selected() {
-                        ctx.focus().focus(last_edit);
-                        ctx.queue(Control::Changed);
-                        Control::Continue
-                    } else {
-                        Control::Continue
-                    }
-                }
-            }
-            ct_event!(keycode press F(1)) => {
-                let txt = from_utf8(HELP)?;
-                let mut txt2 = String::new();
-                for l in txt.lines() {
-                    txt2.push_str(l);
-                    txt2.push('\n');
-                }
-                self.message_dlg.append(&txt2);
+        self.window_cmd = false;
+        let wr = match event {
+            ct_event!(key release CONTROL-'w') => {
+                self.window_cmd = true;
                 Control::Changed
             }
-            ct_event!(keycode press F(2)) => {
-                let txt = from_utf8(CHEAT)?;
-                let mut txt2 = String::new();
-                for l in txt.lines() {
-                    txt2.push_str(l);
-                    txt2.push('\n');
-                }
-                self.message_dlg.append(&txt2);
-                Control::Changed
+            ct_event!(keycode press Left) => Control::Event(MDEvent::PrevEditSplit),
+            ct_event!(keycode press Right) => Control::Event(MDEvent::NextEditSplit),
+            ct_event!(keycode press Tab) => {
+                ctx.focus().enable_log();
+                ctx.focus().next_force();
+                ctx.focus().disable_log();
+                ctx.queue(Control::Changed);
+                Control::Continue
             }
-            _ => Control::Continue,
+            ct_event!(keycode press SHIFT-BackTab) => {
+                ctx.focus().enable_log();
+                ctx.focus().prev_force();
+                ctx.focus().disable_log();
+                ctx.queue(Control::Changed);
+                Control::Continue
+            }
+            ct_event!(key press CONTROL-'c')
+            | ct_event!(key press 'c')
+            | ct_event!(key press 'x')
+            | ct_event!(key press CONTROL-'x') => Control::Event(MDEvent::Close),
+            ct_event!(key press CONTROL-'d')
+            | ct_event!(key press 'd')
+            | ct_event!(key press '+') => Control::Event(MDEvent::Split),
+            ct_event!(key press CONTROL-'t') | ct_event!(key press 't') => {
+                Control::Event(MDEvent::JumpToTabs)
+            }
+            ct_event!(key press CONTROL-'s') | ct_event!(key press 's') => {
+                Control::Event(MDEvent::JumpToEditSplit)
+            }
+            ct_event!(key press CONTROL-'f') | ct_event!(key press 'f') => {
+                Control::Event(MDEvent::JumpToFileSplit)
+            }
+            _ => Control::Changed,
         };
 
-        r = r.or_else(|| match self.menu.handle(event, Popup) {
+        if self.window_cmd {
+            ctx.queue(Control::Event(MDEvent::Status(1, "^W".into())));
+        } else {
+            ctx.queue(Control::Event(MDEvent::Status(1, "".into())));
+        }
+
+        // don't let anything through to the application.
+        Ok(max(wr, Control::Unchanged))
+    }
+
+    fn handle_menu(
+        &mut self,
+        event: &crossterm::event::Event,
+        ctx: &mut AppContext<'_>,
+    ) -> Result<Control<MDEvent>, Error> {
+        let r = match self.menu.handle(event, Popup) {
             MenuOutcome::MenuActivated(0, 0) => Control::Event(MDEvent::MenuNew),
             MenuOutcome::MenuActivated(0, 1) => Control::Event(MDEvent::MenuOpen),
             MenuOutcome::MenuActivated(0, 2) => Control::Event(MDEvent::MenuSave),
@@ -459,8 +508,9 @@ impl MDAppState {
                 Control::Event(MDEvent::CfgNewline)
             }
             MenuOutcome::MenuActivated(2, 2) => Control::Event(MDEvent::Split),
-            MenuOutcome::MenuActivated(2, 3) => Control::Event(MDEvent::JumpToFiles),
-            MenuOutcome::MenuActivated(2, 4) => Control::Event(MDEvent::HideFiles),
+            MenuOutcome::MenuActivated(2, 3) => Control::Event(MDEvent::JumpToTree),
+            MenuOutcome::MenuActivated(2, 4) => Control::Event(MDEvent::JumpToFiles),
+            MenuOutcome::MenuActivated(2, 5) => Control::Event(MDEvent::HideFiles),
             MenuOutcome::MenuSelected(3, n) => {
                 ctx.g.theme = dark_themes()[n].clone();
                 Control::Changed
@@ -473,9 +523,47 @@ impl MDAppState {
             }
             MenuOutcome::Activated(4) => Control::Quit,
             r => r.into(),
-        });
+        };
 
         Ok(r)
+    }
+
+    fn flip_esc_focus(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+        if !self.menu.is_focused() {
+            ctx.focus().focus(&self.menu);
+            ctx.queue(Control::Changed);
+            Ok(Control::Continue)
+        } else {
+            if let Some((_, last_edit)) = self.editor.split_tab.selected() {
+                ctx.focus().focus(last_edit);
+                ctx.queue(Control::Changed);
+                Ok(Control::Continue)
+            } else {
+                Ok(Control::Continue)
+            }
+        }
+    }
+
+    fn show_help(&mut self, _ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+        let txt = from_utf8(HELP)?;
+        let mut txt2 = String::new();
+        for l in txt.lines() {
+            txt2.push_str(l);
+            txt2.push('\n');
+        }
+        self.message_dlg.append(&txt2);
+        Ok(Control::Changed)
+    }
+
+    fn show_cheat(&mut self, _ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+        let txt = from_utf8(CHEAT)?;
+        let mut txt2 = String::new();
+        for l in txt.lines() {
+            txt2.push_str(l);
+            txt2.push('\n');
+        }
+        self.message_dlg.append(&txt2);
+        Ok(Control::Changed)
     }
 }
 

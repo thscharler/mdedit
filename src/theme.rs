@@ -488,6 +488,27 @@ impl DarkTheme {
 
     /// ----------------------
 
+    pub fn choice_style_tools(&self) -> ChoiceStyle {
+        ChoiceStyle {
+            style: self.container_base(),
+            select: Some(self.focus()),
+            focus: Some(self.focus()),
+            popup: PopupStyle {
+                style: self.container_base(),
+                scroll: Some(self.scroll_style()),
+                block: Some(
+                    Block::bordered()
+                        .borders(Borders::LEFT)
+                        .border_style(self.container_border()),
+                ),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    /// ----------------------
+
     pub fn doc_base_color(&self) -> Color {
         self.s.black[3]
     }

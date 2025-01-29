@@ -1,20 +1,23 @@
 use crate::event::MDEvent;
+use crate::fs_structure::FileSysStructure;
 use crate::global::GlobalState;
 use anyhow::Error;
 use rat_salsa::{AppContext, AppState, AppWidget, Control, RenderContext};
-use rat_widget::event::{ct_event, try_flow, HandleEvent, MenuOutcome, Popup, Regular};
-use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
+use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
+use rat_widget::event::{
+    ct_event, try_flow, ChoiceOutcome, HandleEvent, MenuOutcome, Popup, Regular,
+};
+use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
 use rat_widget::list::selection::RowSelection;
 use rat_widget::list::{List, ListState};
 use rat_widget::menu::{PopupMenu, PopupMenuState};
-use rat_widget::popup::PopupConstraint;
+use rat_widget::popup::{Placement, PopupConstraint};
 use rat_widget::scrolled::Scroll;
 use rat_widget::util::revert_style;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Alignment, Constraint, Layout, Position, Rect};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, StatefulWidget, Widget};
-use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Default)]
@@ -23,8 +26,10 @@ pub struct FileList;
 #[derive(Debug)]
 pub struct FileListState {
     pub container: FocusFlag,
-    pub files_dir: PathBuf,
-    pub files: Vec<PathBuf>,
+
+    pub sys: FileSysStructure,
+
+    pub f_sys: ChoiceState<PathBuf>,
     pub file_list: ListState<RowSelection>,
 
     pub popup_rect: Rect,
@@ -35,8 +40,8 @@ impl Default for FileListState {
     fn default() -> Self {
         Self {
             container: Default::default(),
-            files_dir: Default::default(),
-            files: vec![],
+            sys: Default::default(),
+            f_sys: Default::default(),
             file_list: ListState::named("file_list"),
             popup_rect: Default::default(),
             popup: Default::default(),
@@ -56,14 +61,44 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
     ) -> Result<(), Error> {
         let theme = &ctx.g.theme;
 
-        let l_file_list =
-            Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).split(area);
+        let l_file_list = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ])
+        .split(area);
 
         buf.set_style(l_file_list[0], theme.container_base());
 
+        Line::from(state.sys.name.as_str())
+            .style(ctx.g.theme.container_base())
+            .render(l_file_list[1], buf);
+
+        let (choice, choice_popup) = Choice::new()
+            .styles(ctx.g.theme.choice_style_tools())
+            .items(
+                state
+                    .sys
+                    .dirs
+                    .iter()
+                    .cloned()
+                    .zip(state.sys.display.iter().cloned()),
+            )
+            .popup_scroll(Scroll::new())
+            .popup_placement(Placement::Below)
+            .popup_len(10)
+            .behave_select(ChoiceSelect::MouseClick)
+            .behave_close(ChoiceClose::SingleClick)
+            .into_widgets();
+        choice.render(l_file_list[2], buf, &mut state.f_sys);
+
+        buf.set_style(l_file_list[3], theme.container_base());
+
         List::default()
             .scroll(Scroll::new().styles(theme.scroll_style()))
-            .items(state.files.iter().map(|v| {
+            .items(state.sys.files.iter().map(|v| {
                 if let Some(name) = v.file_name() {
                     Line::from(name.to_string_lossy().to_string())
                 } else {
@@ -71,7 +106,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
                 }
             }))
             .styles(theme.list_style())
-            .render(l_file_list[1], buf, &mut state.file_list);
+            .render(l_file_list[4], buf, &mut state.file_list);
 
         if state.file_list.is_focused() && !state.popup.is_active() {
             if let Some(selected) = state.file_list.selected() {
@@ -82,26 +117,24 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
                     .focus
                     .unwrap_or(revert_style(theme.list_style().style));
 
-                let line = state
-                    .files
-                    .iter()
-                    .nth(idx)
-                    .map(|v| {
-                        if let Some(name) = v.file_name() {
-                            Line::from(name.to_string_lossy().to_string()).style(focus_style)
-                        } else {
-                            Line::from("???").style(focus_style)
-                        }
-                    })
-                    .expect("line");
+                let line = state.sys.files.iter().nth(idx).map(|v| {
+                    if let Some(name) = v.file_name() {
+                        Line::from(name.to_string_lossy().to_string()).style(focus_style)
+                    } else {
+                        Line::from("???").style(focus_style)
+                    }
+                });
+                if let Some(line) = line {
+                    let mut area = state.file_list.row_areas[idx];
+                    area.width = line.width() as u16 + 1;
 
-                let mut area = state.file_list.row_areas[idx];
-                area.width = line.width() as u16 + 1;
-
-                line.style(focus_style)
-                    .render(area, ctx.g.hover.buffer_mut(area));
+                    line.style(focus_style)
+                        .render(area, ctx.g.hover.buffer_mut(area));
+                }
             }
         }
+
+        choice_popup.render(l_file_list[2], buf, &mut state.f_sys);
 
         if state.popup.is_active() {
             PopupMenu::new()
@@ -125,6 +158,9 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
 impl HasFocus for FileListState {
     fn build(&self, builder: &mut FocusBuilder) {
         let tag = builder.start(self);
+        builder.enable_log();
+        builder.widget_navigate(&self.f_sys, Navigation::Leave);
+        builder.disable_log();
         builder.widget(&self.file_list);
         builder.end(tag);
     }
@@ -163,7 +199,7 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
                             .file_list
                             .row_at_clicked((self.popup_rect.x, self.popup_rect.y))
                         {
-                            Control::Event(MDEvent::Open(self.files[pos].clone()))
+                            Control::Event(MDEvent::Open(self.sys.files[pos].clone()))
                         } else {
                             Control::Changed
                         }
@@ -179,18 +215,29 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
                     r => r.into(),
                 });
 
+                try_flow!(match self.f_sys.handle(event, Popup) {
+                    ChoiceOutcome::Value => {
+                        let sel_path = self.f_sys.value();
+                        self.load_current(&sel_path)?;
+                        Control::Changed
+                    }
+                    r => r.into(),
+                });
+
                 if self.file_list.is_focused() {
                     try_flow!(match event {
                         ct_event!(keycode press Enter) => {
                             if let Some(row) = self.file_list.selected() {
-                                Control::Event(MDEvent::SelectOrOpen(self.files[row].clone()))
+                                Control::Event(MDEvent::SelectOrOpen(self.sys.files[row].clone()))
                             } else {
                                 Control::Continue
                             }
                         }
                         ct_event!(key press '+') => {
                             if let Some(row) = self.file_list.selected() {
-                                Control::Event(MDEvent::SelectOrOpenSplit(self.files[row].clone()))
+                                Control::Event(MDEvent::SelectOrOpenSplit(
+                                    self.sys.files[row].clone(),
+                                ))
                             } else {
                                 Control::Continue
                             }
@@ -213,7 +260,7 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
                         if self.file_list.mouse.doubleclick(self.file_list.area, m) =>
                     {
                         if let Some(row) = self.file_list.row_at_clicked((m.column, m.row)) {
-                            Control::Event(MDEvent::SelectOrOpen(self.files[row].clone()))
+                            Control::Event(MDEvent::SelectOrOpen(self.sys.files[row].clone()))
                         } else {
                             Control::Continue
                         }
@@ -234,14 +281,14 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
 impl FileListState {
     /// Current directory.
     pub fn current_dir(&self) -> &Path {
-        &self.files_dir
+        &self.sys.files_dir
     }
 
     /// Current file
     pub fn current_file(&self) -> Option<&Path> {
         if let Some(selected) = self.file_list.selected() {
-            if selected < self.files.len() {
-                Some(&self.files[selected])
+            if selected < self.sys.files.len() {
+                Some(&self.sys.files[selected])
             } else {
                 None
             }
@@ -251,26 +298,38 @@ impl FileListState {
     }
 
     /// Read directory.
-    pub fn load(&mut self, dir: &Path) -> Result<(), Error> {
-        self.files_dir = dir.into();
-        self.files.clear();
-        if let Ok(rd) = fs::read_dir(dir) {
-            for f in rd {
-                let Ok(f) = f else {
-                    continue;
-                };
-                let f = f.path();
-                if let Some(ext) = f.extension() {
-                    if ext == "md" {
-                        self.files.push(f);
-                    }
-                }
-            }
-        }
-        if self.files.len() > 0 {
+    pub fn load_current(&mut self, dir: &Path) -> Result<(), Error> {
+        self.sys.load_current(dir)?;
+
+        self.f_sys.set_value(self.sys.files_dir.clone());
+        self.f_sys.scroll_to_selected();
+
+        if self.sys.files.len() > 0 {
             if let Some(sel) = self.file_list.selected() {
-                if sel > self.files.len() {
-                    self.file_list.select(Some(self.files.len() - 1));
+                if sel > self.sys.files.len() {
+                    self.file_list.move_to(self.sys.files.len() - 1);
+                }
+            } else {
+                self.file_list.move_to(0);
+            }
+        } else {
+            self.file_list.select(None);
+        }
+
+        Ok(())
+    }
+
+    /// Set directory, find roots.
+    pub fn load(&mut self, dir: &Path) -> Result<(), Error> {
+        self.sys.load(dir)?;
+
+        self.f_sys.set_value(self.sys.files_dir.clone());
+        self.f_sys.scroll_to_selected();
+
+        if self.sys.files.len() > 0 {
+            if let Some(sel) = self.file_list.selected() {
+                if sel > self.sys.files.len() {
+                    self.file_list.select(Some(self.sys.files.len() - 1));
                 }
             } else {
                 self.file_list.select(Some(0));
@@ -278,13 +337,14 @@ impl FileListState {
         } else {
             self.file_list.select(None);
         }
+
         Ok(())
     }
 
     /// Select this file.
     pub fn select(&mut self, file: &Path) -> Result<(), Error> {
         self.file_list.clear_selection();
-        for (i, f) in self.files.iter().enumerate() {
+        for (i, f) in self.sys.files.iter().enumerate() {
             if file == f {
                 self.file_list.select(Some(i));
                 break;

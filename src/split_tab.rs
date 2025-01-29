@@ -198,7 +198,7 @@ impl AppState<GlobalState, MDEvent, Error> for SplitTabState {
 
 impl SplitTabState {
     // Establish the active split+tab using the currently focused tab.
-    pub fn set_active_split(&mut self) -> bool {
+    pub fn establish_active_split(&mut self) -> bool {
         // Find which split contains the current focus.
         let old_split = self.sel_split;
         let old_tab = self.sel_tab;
