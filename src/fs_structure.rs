@@ -1,5 +1,6 @@
 use anyhow::Error;
 use std::fs;
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Default)]
@@ -130,11 +131,26 @@ fn fs_recurse(
     display: &mut Vec<String>,
 ) -> Result<(), Error> {
     let mut tmp = Vec::new();
+
+    let mut ignore = Vec::new();
+
+    let gitignore = dir.join(".gitignore");
+    if gitignore.exists() {
+        let gitignore_txt = fs::read_to_string(gitignore)?;
+        for l in gitignore_txt.lines() {
+            ignore.push(glob::Pattern::new(l.trim())?);
+        }
+    }
+    let is_ignored = |s: &str| -> bool { ignore.iter().any(|v| v.matches(s)) };
+
     for f in fs::read_dir(&dir)? {
         let f = f?;
         if let Some(f_name) = f.path().file_name() {
             let f_name = f_name.to_string_lossy();
             if f_name == ".git" {
+                continue;
+            }
+            if is_ignored(f_name.as_ref()) {
                 continue;
             }
         }
