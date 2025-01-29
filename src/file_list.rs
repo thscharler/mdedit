@@ -13,13 +13,12 @@ use rat_widget::list::{List, ListState};
 use rat_widget::menu::{PopupMenu, PopupMenuState};
 use rat_widget::popup::{Placement, PopupConstraint};
 use rat_widget::scrolled::Scroll;
-use rat_widget::util::{revert_style, union_non_empty};
+use rat_widget::util::revert_style;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Alignment, Constraint, Layout, Position, Rect};
-use ratatui::prelude::Style;
 use ratatui::text::Line;
 use ratatui::widgets::{Block, StatefulWidget, StatefulWidgetRef, Widget};
-use std::cmp::{max, min};
+use std::cmp::min;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Default)]
@@ -310,7 +309,6 @@ impl FileListState {
         self.sys.load_current(dir)?;
 
         self.f_sys.set_value(self.sys.files_dir.clone());
-        self.f_sys.set_offset(0);
 
         if self.sys.files.len() > 0 {
             if let Some(sel) = self.file_list.selected() {

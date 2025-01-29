@@ -6,7 +6,7 @@ use crate::global::GlobalState;
 use crate::theme::{dark_themes, DarkTheme};
 use anyhow::Error;
 use dirs::cache_dir;
-use log::{debug, error};
+use log::error;
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
 use rat_theme::scheme::IMPERIAL;
