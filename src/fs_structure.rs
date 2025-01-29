@@ -1,6 +1,5 @@
 use anyhow::Error;
 use std::fs;
-use std::fs::File;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Default)]
@@ -132,25 +131,12 @@ fn fs_recurse(
 ) -> Result<(), Error> {
     let mut tmp = Vec::new();
 
-    let mut ignore = Vec::new();
-
-    let gitignore = dir.join(".gitignore");
-    if gitignore.exists() {
-        let gitignore_txt = fs::read_to_string(gitignore)?;
-        for l in gitignore_txt.lines() {
-            ignore.push(glob::Pattern::new(l.trim())?);
-        }
-    }
-    let is_ignored = |s: &str| -> bool { ignore.iter().any(|v| v.matches(s)) };
-
     for f in fs::read_dir(&dir)? {
         let f = f?;
+        // todo: proper .gitignore support
         if let Some(f_name) = f.path().file_name() {
             let f_name = f_name.to_string_lossy();
-            if f_name == ".git" {
-                continue;
-            }
-            if is_ignored(f_name.as_ref()) {
+            if f_name == ".git" || f_name == "target" {
                 continue;
             }
         }
@@ -192,24 +178,20 @@ fn fs_recurse(
 }
 
 fn find_root(path: &Path) -> Option<PathBuf> {
-    let mut parent = if path.is_relative() {
-        PathBuf::from(".").join(path)
-    } else {
-        path.to_path_buf()
-    };
+    let mut path = path.to_path_buf();
 
     loop {
-        let cargo_toml = parent.join("Cargo.toml");
+        let cargo_toml = path.join("Cargo.toml");
         if cargo_toml.exists() {
-            return Some(parent);
+            return Some(path);
         }
-        let book_toml = parent.join("book.toml");
+        let book_toml = path.join("book.toml");
         if book_toml.exists() {
-            return Some(parent);
+            return Some(path);
         }
 
-        if let Some(v) = parent.parent() {
-            parent = v.to_path_buf();
+        if let Some(v) = path.parent() {
+            path = v.to_path_buf();
         } else {
             return None;
         }

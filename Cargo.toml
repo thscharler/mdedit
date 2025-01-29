@@ -13,6 +13,7 @@ rust-ini = "0.21.1"
 fern = "0.7"
 dirs = "6.0.0"
 glob = "0.3"
+ignore = "0.4"
 pulldown-cmark = "0.12"
 toml = "0.8"
 
