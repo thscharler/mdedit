@@ -3,7 +3,7 @@ name = "mdedit"
 version = "0.3.0"
 edition = "2021"
 description = "markdown editor with ratatui and rat-salsa"
-license = "Apache-2.0, MIT"
+license = "MIT/Apache-2.0"
 
 [dependencies]
 crossterm = "0.28"
