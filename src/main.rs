@@ -122,8 +122,8 @@ impl<'a> MenuStructure<'a> for Menu {
                 submenu.item_parsed("Save _as..");
             }
             1 => {
-                submenu.item_parsed("Format Item|Ctrl-F");
-                submenu.item_parsed("Alt-Format Item|Ctrl-G");
+                submenu.item_parsed("Format Item|F8");
+                submenu.item_parsed("Alt-Format Item|F7");
             }
             2 => {
                 if self.show_ctrl {

@@ -222,18 +222,30 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                         self.follow_link() //
                     }
                     ct_event!(keycode press F(8)) => {
-                        let r =
-                            md_format(&mut self.edit, ctx.g.cfg.text_width as usize, false).into();
-                        Ok(r)
+                        if self.edit.is_focused() {
+                            let r = md_format(&mut self.edit, ctx.g.cfg.text_width as usize, false)
+                                .into();
+                            Ok(r)
+                        } else {
+                            Ok(Control::Continue)
+                        }
                     }
                     ct_event!(keycode press F(7)) => {
-                        let r =
-                            md_format(&mut self.edit, ctx.g.cfg.text_width as usize, true).into();
-                        Ok(r)
+                        if self.edit.is_focused() {
+                            let r = md_format(&mut self.edit, ctx.g.cfg.text_width as usize, true)
+                                .into();
+                            Ok(r)
+                        } else {
+                            Ok(Control::Continue)
+                        }
                     }
                     ct_event!(key press CONTROL-'p') => {
-                        let r = md_dump(&mut self.edit).into();
-                        Ok(r)
+                        if self.edit.is_focused() {
+                            let r = md_dump(&mut self.edit).into();
+                            Ok(r)
+                        } else {
+                            Ok(Control::Continue)
+                        }
                     }
                     _ => Ok(Control::Continue),
                 })?;
