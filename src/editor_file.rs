@@ -4,6 +4,7 @@ use crate::AppContext;
 use anyhow::{anyhow, Error};
 use log::warn;
 use pulldown_cmark::{Event, Options, Parser, Tag};
+use rat_markdown::dump::md_dump;
 use rat_markdown::op::md_format;
 use rat_markdown::styles::{parse_md_styles, MDStyle};
 use rat_markdown::MarkDown;
@@ -217,7 +218,23 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                     r => r.into(),
                 };
                 r = r.or_else_try(|| match event {
-                    ct_event!(key press CONTROL-'l') => self.follow_link(),
+                    ct_event!(key press CONTROL-'l') => {
+                        self.follow_link() //
+                    }
+                    ct_event!(keycode press F(8)) => {
+                        let r =
+                            md_format(&mut self.edit, ctx.g.cfg.text_width as usize, false).into();
+                        Ok(r)
+                    }
+                    ct_event!(keycode press F(7)) => {
+                        let r =
+                            md_format(&mut self.edit, ctx.g.cfg.text_width as usize, true).into();
+                        Ok(r)
+                    }
+                    ct_event!(key press CONTROL-'p') => {
+                        let r = md_dump(&mut self.edit).into();
+                        Ok(r)
+                    }
                     _ => Ok(Control::Continue),
                 })?;
                 r
