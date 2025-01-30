@@ -1,8 +1,9 @@
+use crate::fs_structure::FileSysStructure;
+use crossbeam::atomic::AtomicCell;
 use rat_salsa::rendered::RenderedEvent;
 use rat_salsa::timer::TimeOut;
 use std::path::PathBuf;
 
-#[derive(Debug, PartialEq, Eq)]
 pub enum MDEvent {
     Event(crossterm::event::Event),
     TimeOut(TimeOut),
@@ -25,6 +26,7 @@ pub enum MDEvent {
     SelectOrOpen(PathBuf),
     SelectOrOpenSplit(PathBuf),
     SaveAs(PathBuf),
+    FileSys(Box<AtomicCell<FileSysStructure>>),
     Save,
     Split,
     JumpToFileSplit,

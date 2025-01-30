@@ -75,8 +75,10 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDEdit {
 impl_has_focus!(file_list, split_files, split_tab for MDEditState);
 
 impl AppState<GlobalState, MDEvent, Error> for MDEditState {
-    fn init(&mut self, _ctx: &mut AppContext<'_>) -> Result<(), Error> {
-        self.file_list.load(&Path::new("."))?;
+    fn init(&mut self, ctx: &mut AppContext<'_>) -> Result<(), Error> {
+        self.file_list.init(ctx)?;
+        self.split_tab.init(ctx)?;
+
         Ok(())
     }
 
@@ -118,6 +120,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
             MDEvent::NextEditSplit => self.split_tab.select_next(ctx).into(),
             MDEvent::HideFiles => self.hide_files(ctx)?,
             MDEvent::SyncEdit => self.sync_edit(ctx)?,
+            MDEvent::FileSys(fs) => {
+                self.file_list.sys = fs.take();
+                Control::Changed
+            }
             _ => Control::Continue,
         };
 
@@ -168,7 +174,10 @@ impl MDEditState {
             (0, 0)
         };
 
-        self._open(pos, path, ctx)
+        let mut r = self._open(pos, path, ctx)?;
+        r = r.and_try(|| self._sync_files(path, ctx))?;
+
+        Ok(r)
     }
 
     // Open path.
@@ -182,8 +191,24 @@ impl MDEditState {
         } else {
             (0, 0)
         };
+        let mut r = self._open(pos, path, ctx)?;
+        r = r.and_try(|| self._sync_files(path, ctx))?;
+        Ok(r)
+    }
 
-        self._open(pos, path, ctx)
+    // Open path. Don't sync file-list.
+    pub fn open_no_sync(
+        &mut self,
+        path: &Path,
+        ctx: &mut AppContext<'_>,
+    ) -> Result<Control<MDEvent>, Error> {
+        let pos = if let Some(pos) = self.split_tab.selected_pos() {
+            (pos.0, pos.1 + 1)
+        } else {
+            (0, 0)
+        };
+        let r = self._open(pos, path, ctx)?;
+        Ok(r)
     }
 
     fn _open(
@@ -204,11 +229,59 @@ impl MDEditState {
         self.split_tab.open(pos, new, ctx);
         self.split_tab.select(pos, ctx);
 
-        if let Some(parent) = path.parent() {
-            self.file_list.load(parent)?;
-        }
-        self.file_list.select(path)?;
+        Ok(Control::Changed)
+    }
 
+    // Sync views.
+    pub fn sync_file_list(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+        let path = if let Some((_, md)) = self.split_tab.selected() {
+            Some(md.path.clone())
+        } else {
+            None
+        };
+        let r = if let Some(path) = path {
+            self._sync_files(&path, ctx)?
+        } else {
+            Control::Continue
+        };
+
+        Ok(r)
+    }
+
+    // Sync file-list with the given file.
+    fn _sync_files(
+        &mut self,
+        file: &Path,
+        ctx: &mut AppContext<'_>,
+    ) -> Result<Control<MDEvent>, Error> {
+        if let Some(parent) = file.parent() {
+            if self.file_list.current_dir() != parent {
+                self.file_list.load(parent, &ctx.g.cfg.globs)?;
+                self.file_list.select(file)?;
+                Ok(Control::Changed)
+            } else if self.file_list.current_file() != Some(file) {
+                self.file_list.select(file)?;
+                Ok(Control::Changed)
+            } else {
+                Ok(Control::Unchanged)
+            }
+        } else {
+            Ok(Control::Unchanged)
+        }
+    }
+
+    /// Synchronize all editor instances of one file.
+    pub fn sync_edit(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+        // synchronize instances
+        let (id_sel, sel_path, replay) = if let Some((id_sel, sel)) = self.split_tab.selected_mut()
+        {
+            (id_sel, sel.path.clone(), sel.edit.recent_replay_log())
+        } else {
+            ((0, 0), PathBuf::default(), Vec::default())
+        };
+        if !replay.is_empty() {
+            self.split_tab.replay(id_sel, &sel_path, &replay, ctx);
+        }
         Ok(Control::Changed)
     }
 
@@ -240,11 +313,17 @@ impl MDEditState {
         }
     }
 
+    // Establish the currently focus split+tab as the active split.
+    pub fn establish_active_split(&mut self) -> bool {
+        self.split_tab.establish_active_split()
+    }
+
     // Save all.
-    pub fn save(&mut self, _ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+    pub fn save(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
         self.split_tab.save()?;
 
-        self.file_list.load(&self.file_list.sys.files_dir.clone())?;
+        self.file_list
+            .load(&self.file_list.sys.files_dir.clone(), &ctx.g.cfg.globs)?;
         if let Some((_, mdfile)) = self.split_tab.selected() {
             self.file_list.select(&mdfile.path)?;
         }
@@ -429,63 +508,6 @@ impl MDEditState {
         self.split_tab.open(new_pos, new, ctx);
         self.split_tab.select(pos, ctx);
 
-        Ok(Control::Changed)
-    }
-
-    // Establish the currently focus split+tab as the active split.
-    pub fn establish_active_split(&mut self) -> bool {
-        self.split_tab.establish_active_split()
-    }
-
-    // Sync views.
-    pub fn sync_file_list(&mut self, ctx: &mut AppContext<'_>) -> Result<(), Error> {
-        let path = if let Some((_, md)) = self.split_tab.selected() {
-            Some(md.path.clone())
-        } else {
-            None
-        };
-        if let Some(path) = path {
-            if self.sync_files(&path, ctx)? == Control::Changed {
-                ctx.queue(Control::Changed);
-            }
-        }
-        Ok(())
-    }
-
-    // Sync file-list with the given file.
-    fn sync_files(
-        &mut self,
-        file: &Path,
-        _ctx: &mut AppContext<'_>,
-    ) -> Result<Control<MDEvent>, Error> {
-        if let Some(parent) = file.parent() {
-            if self.file_list.current_dir() != parent {
-                self.file_list.load(parent)?;
-                self.file_list.select(file)?;
-                Ok(Control::Changed)
-            } else if self.file_list.current_file() != Some(file) {
-                self.file_list.select(file)?;
-                Ok(Control::Changed)
-            } else {
-                Ok(Control::Unchanged)
-            }
-        } else {
-            Ok(Control::Unchanged)
-        }
-    }
-
-    /// Synchronize all editor instances of one file.
-    pub fn sync_edit(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
-        // synchronize instances
-        let (id_sel, sel_path, replay) = if let Some((id_sel, sel)) = self.split_tab.selected_mut()
-        {
-            (id_sel, sel.path.clone(), sel.edit.recent_replay_log())
-        } else {
-            ((0, 0), PathBuf::default(), Vec::default())
-        };
-        if !replay.is_empty() {
-            self.split_tab.replay(id_sel, &sel_path, &replay, ctx);
-        }
         Ok(Control::Changed)
     }
 }

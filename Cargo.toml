@@ -16,14 +16,15 @@ crossterm = "0.28"
 ratatui = "0.29"
 cli-clipboard = "0.4"
 anyhow = "1.0"
-log = "0.4.25"
-rust-ini = "0.21.1"
+log = "0.4"
+rust-ini = "0.21"
 fern = "0.7"
-dirs = "6.0.0"
+dirs = "6.0"
 glob = "0.3"
 ignore = "0.4"
 pulldown-cmark = "0.12"
 toml = "0.8"
+crossbeam = "0.8"
 
 rat-salsa = { version = "1.0", path = "../rat-salsa/rat-salsa" }
 rat-widget = { version = "1.0", path = "../rat-salsa/rat-widget", features = ["user_directories", "unstable-widget-ref"] }

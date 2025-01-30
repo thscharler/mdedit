@@ -2,7 +2,6 @@ use crate::event::MDEvent;
 use crate::fs_structure::FileSysStructure;
 use crate::global::GlobalState;
 use anyhow::Error;
-use log::debug;
 use rat_salsa::{AppContext, AppState, AppWidget, Control, RenderContext};
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
 use rat_widget::event::{
@@ -182,7 +181,6 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
         &mut self,
         _ctx: &mut AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<(), Error> {
-        self.load(&Path::new("."))?;
         Ok(())
     }
 
@@ -226,7 +224,7 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
                 try_flow!(match self.f_sys.handle(event, Popup) {
                     ChoiceOutcome::Value => {
                         let sel_path = self.f_sys.value();
-                        self.load_current(&sel_path)?;
+                        self.load_current(&sel_path, &ctx.g.cfg.globs)?;
                         Control::Changed
                     }
                     r => r.into(),
@@ -306,8 +304,8 @@ impl FileListState {
     }
 
     /// Read directory.
-    pub fn load_current(&mut self, dir: &Path) -> Result<(), Error> {
-        self.sys.load_current(dir)?;
+    pub fn load_current(&mut self, dir: &Path, globs: &[String]) -> Result<(), Error> {
+        self.sys.load_current(dir, globs)?;
 
         self.f_sys.set_value(self.sys.files_dir.clone());
 
@@ -327,8 +325,8 @@ impl FileListState {
     }
 
     /// Set directory, find roots.
-    pub fn load(&mut self, dir: &Path) -> Result<(), Error> {
-        self.sys.load(dir)?;
+    pub fn load(&mut self, dir: &Path, globs: &[String]) -> Result<(), Error> {
+        self.sys.load(dir, globs)?;
 
         self.f_sys.set_value(self.sys.files_dir.clone());
         self.f_sys.set_offset(0);

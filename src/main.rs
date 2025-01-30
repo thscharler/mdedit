@@ -2,11 +2,13 @@ use crate::config::MDConfig;
 use crate::editor::{MDEdit, MDEditState};
 use crate::event::MDEvent;
 use crate::facilities::{Facility, MDFileDialog, MDFileDialogState};
+use crate::fs_structure::FileSysStructure;
 use crate::global::GlobalState;
 use crate::theme::{dark_themes, DarkTheme};
 use anyhow::Error;
+use crossbeam::atomic::AtomicCell;
 use dirs::cache_dir;
-use log::error;
+use log::{error, set_max_level};
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
 use rat_theme::scheme::IMPERIAL;
@@ -31,7 +33,7 @@ use std::env::args;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::str::from_utf8;
-use std::{fs, mem};
+use std::{env, fs, mem};
 
 type AppContext<'a> = rat_salsa::AppContext<'a, GlobalState, MDEvent, Error>;
 
@@ -50,6 +52,7 @@ fn main() -> Result<(), Error> {
     setup_logging()?;
 
     let mut config = MDConfig::load()?;
+    set_max_level(config.log.parse()?);
 
     let mut args = args();
     args.next();
@@ -301,12 +304,25 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
     fn init(&mut self, ctx: &mut AppContext<'_>) -> Result<(), Error> {
         ctx.focus = Some(FocusBuilder::build_for(self));
 
+        self.editor.init(ctx)?;
         self.menu.bar.select(Some(0));
         self.menu.focus().set(true);
-        self.editor.init(ctx)?;
 
-        for load in mem::take(&mut ctx.g.cfg.load_file) {
-            _ = self.editor.open(&load, ctx)?;
+        if ctx.g.cfg.load_file.is_empty() {
+            let cwd = env::current_dir()?;
+            let cfg = ctx.g.cfg.globs.clone();
+            ctx.spawn(move |_can, _send| {
+                let mut sys = FileSysStructure::new();
+                sys.load(&cwd, &cfg)?;
+                Ok(Control::Event(MDEvent::FileSys(
+                    Box::new(AtomicCell::new(sys)), //
+                )))
+            })?;
+        } else {
+            for load in mem::take(&mut ctx.g.cfg.load_file) {
+                _ = self.editor.open_no_sync(&load, ctx)?;
+            }
+            _ = self.editor.sync_file_list(ctx)?;
         }
 
         Ok(())
@@ -404,7 +420,8 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         // global auto sync
         self.editor.auto_hide_files();
         if self.editor.establish_active_split() {
-            self.editor.sync_file_list(ctx)?;
+            let r = self.editor.sync_file_list(ctx)?;
+            ctx.queue(r);
         }
 
         Ok(r)
@@ -580,7 +597,7 @@ fn setup_logging() -> Result<(), Error> {
         _ = fs::remove_file(&log_file);
         fern::Dispatch::new()
             .format(|out, message, _record| out.finish(format_args!("{}", message)))
-            .level(log::LevelFilter::Warn)
+            .level(log::LevelFilter::Debug)
             .chain(fern::log_file(&log_file)?)
             .apply()?;
     }

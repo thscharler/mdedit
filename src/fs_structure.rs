@@ -1,7 +1,7 @@
 use anyhow::Error;
+use log::debug;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 
 #[derive(Debug, Default)]
 pub struct FileSysStructure {
@@ -14,16 +14,35 @@ pub struct FileSysStructure {
     pub files: Vec<PathBuf>,
 }
 
+// only needed for MDEvent ...
+impl PartialEq for FileSysStructure {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for FileSysStructure {}
+
 impl FileSysStructure {
-    pub fn load(&mut self, path: &Path) -> Result<(), Error> {
-        self.load_current(path)?;
+    pub fn new() -> Self {
+        Self {
+            root: Default::default(),
+            name: Default::default(),
+            dirs: Default::default(),
+            display: Default::default(),
+            files_dir: Default::default(),
+            files: Default::default(),
+        }
+    }
+
+    pub fn load(&mut self, path: &Path, globs: &[String]) -> Result<(), Error> {
+        debug!("** load {:?} {:?}", path, globs);
+        self.load_current(path, globs)?;
         self.load_filesys(path)?;
         Ok(())
     }
 
     pub fn load_filesys(&mut self, path: &Path) -> Result<(), Error> {
-        let et = SystemTime::now();
-
         let new_root = if let Some(v) = find_root(path) {
             v
         } else {
@@ -33,6 +52,8 @@ impl FileSysStructure {
         if self.root == new_root {
             return Ok(());
         }
+
+        debug!("** change root {:?}", new_root);
 
         self.name = String::default();
         self.root = new_root;
@@ -58,23 +79,31 @@ impl FileSysStructure {
         Ok(())
     }
 
-    pub fn load_current(&mut self, path: &Path) -> Result<(), Error> {
+    pub fn load_current(&mut self, path: &Path, globs: &[String]) -> Result<(), Error> {
+        debug!("load current {:?} {:?}", path, globs);
+
         self.files_dir = path.into();
         self.files.clear();
 
-        if let Ok(rd) = fs::read_dir(path) {
+        for pat in globs {
+            let pat = path.join(pat);
+            let pat = pat.to_string_lossy();
+
+            let rd = glob::glob(pat.as_ref())?;
+
             for f in rd {
                 let Ok(f) = f else {
                     continue;
                 };
-                let f = f.path();
-                if let Some(ext) = f.extension() {
-                    if ext == "md" {
-                        self.files.push(f);
-                    }
+                if f.is_file() {
+                    debug!("    found {:?} -> {:?}", pat, f);
+                    self.files.push(f);
                 }
             }
         }
+
+        self.files.sort();
+        self.files.dedup();
 
         Ok(())
     }

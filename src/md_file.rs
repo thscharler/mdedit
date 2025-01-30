@@ -2,7 +2,7 @@ use crate::event::MDEvent;
 use crate::global::GlobalState;
 use crate::AppContext;
 use anyhow::{anyhow, Error};
-use log::{debug, warn};
+use log::warn;
 use pulldown_cmark::{Event, Options, Parser, Tag};
 use rat_markdown::op::md_format;
 use rat_markdown::styles::{parse_md_styles, MDStyle};
@@ -233,7 +233,6 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                 Control::Changed
             }
             MDEvent::CfgShowCtrl => {
-                debug!("show control rcv");
                 self.edit.set_show_ctrl(ctx.g.cfg.show_ctrl);
                 Control::Changed
             }

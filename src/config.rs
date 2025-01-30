@@ -11,6 +11,8 @@ pub struct MDConfig {
     pub file_split_at: u16,
     pub new_line: String,
     pub load_file: Vec<PathBuf>,
+    pub globs: Vec<String>,
+    pub log: String,
 }
 
 #[cfg(windows)]
@@ -32,12 +34,23 @@ impl MDConfig {
                 let theme = ini.get_from_or(section.clone(), "theme", "Imperial");
                 let file_split_at = ini
                     .get_from_or(
-                        section,
+                        section.clone(),
                         "file_split_at",
                         DEFAULT_FILE_SPLIT_AT.to_string().as_str(),
                     )
                     .parse()
                     .unwrap_or(DEFAULT_FILE_SPLIT_AT);
+                let mut globs = ini
+                    .get_from_or(section.clone(), "file_pattern", "*.md")
+                    .split([' ', ','])
+                    .map(|v| v.to_string())
+                    .collect::<Vec<_>>();
+                globs.sort();
+                globs.dedup();
+                let log = ini
+                    .get_from_or(section.clone(), "log", "warn")
+                    .trim()
+                    .to_string();
 
                 Some(MDConfig {
                     theme: theme.into(),
@@ -45,6 +58,8 @@ impl MDConfig {
                     file_split_at,
                     new_line: LINE_ENDING.into(),
                     load_file: Default::default(),
+                    globs,
+                    log,
                 })
             } else {
                 None
@@ -59,6 +74,8 @@ impl MDConfig {
             file_split_at: DEFAULT_FILE_SPLIT_AT,
             new_line: LINE_ENDING.into(),
             load_file: Default::default(),
+            globs: vec!["*.md".to_string()],
+            log: "debug".to_string(),
         }))
     }
 
@@ -74,10 +91,26 @@ impl MDConfig {
             let section: Option<String> = None;
             ini.set_to(section.clone(), "theme".into(), self.theme.clone());
             ini.set_to(
-                section,
+                section.clone(),
                 "file_split_at".into(),
                 self.file_split_at.to_string(),
             );
+            ini.set_to(
+                section.clone(),
+                "file_pattern".into(),
+                self.globs
+                    .iter()
+                    .cloned()
+                    .reduce(|mut v, w| {
+                        v.push(',');
+                        v.push(' ');
+                        v.push_str(&w);
+                        v
+                    })
+                    .unwrap_or("*.md".to_string()),
+            );
+            ini.set_to(section.clone(), "log".into(), self.log.clone());
+
             ini.write_to_file(config)?;
 
             Ok(())
