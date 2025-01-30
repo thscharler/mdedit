@@ -10,6 +10,7 @@ use crossbeam::atomic::AtomicCell;
 use dirs::cache_dir;
 use log::{error, set_max_level};
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
+use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
 use rat_theme::scheme::IMPERIAL;
 use rat_widget::event::{
@@ -33,6 +34,7 @@ use std::env::args;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::str::from_utf8;
+use std::time::Duration;
 use std::{env, fs, mem};
 
 type AppContext<'a> = rat_salsa::AppContext<'a, GlobalState, MDEvent, Error>;
@@ -158,6 +160,7 @@ pub struct MDAppState {
     pub editor: MDEditState,
     pub menu: MenubarState,
     pub status: StatusLineState,
+    pub clean_start: TimerHandle,
 
     pub window_cmd: bool,
 
@@ -172,6 +175,7 @@ impl Default for MDAppState {
             editor: MDEditState::default(),
             menu: MenubarState::named("menu"),
             status: Default::default(),
+            clean_start: Default::default(),
             window_cmd: false,
             message_dlg: Default::default(),
             error_dlg: Default::default(),
@@ -307,6 +311,9 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         self.editor.init(ctx)?;
         self.menu.bar.select(Some(0));
         self.menu.focus().set(true);
+        self.status
+            .status(0, format!("mdedit {}", env!("CARGO_PKG_VERSION")));
+        self.clean_start = ctx.add_timer(TimerDef::new().timer(Duration::from_secs(1)));
 
         if ctx.g.cfg.load_file.is_empty() {
             let cwd = env::current_dir()?;
@@ -410,6 +417,14 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             MDEvent::StoreConfig => {
                 error!("{:?}", ctx.g.cfg.store());
                 Control::Continue
+            }
+            MDEvent::TimeOut(t) => {
+                if t.handle == self.clean_start {
+                    self.status.status(0, "");
+                    Control::Changed
+                } else {
+                    Control::Continue
+                }
             }
             _ => Control::Continue,
         };
