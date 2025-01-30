@@ -330,15 +330,14 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
 
     fn event(
         &mut self,
-        event: &MDEvent,
+        mdevent: &MDEvent,
         ctx: &mut rat_salsa::AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<Control<MDEvent>, Error> {
-        try_flow!(self.file_dlg.handle(event, Dialog)?);
-
-        let mut r = match event {
+        let mut r = match mdevent {
             MDEvent::Event(event) => {
                 try_flow!(self.error_dlg.handle(event, Dialog));
                 try_flow!(self.message_dlg.handle(event, Dialog));
+                try_flow!(self.file_dlg.handle(mdevent, Dialog)?);
 
                 // ^W window commands
                 if self.window_cmd {
@@ -415,7 +414,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             _ => Control::Continue,
         };
 
-        r = r.or_else_try(|| self.editor.event(event, ctx))?;
+        r = r.or_else_try(|| self.editor.event(mdevent, ctx))?;
 
         // global auto sync
         self.editor.auto_hide_files();

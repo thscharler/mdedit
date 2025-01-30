@@ -1,4 +1,4 @@
-MDEDIT(1)                    Markdown editing MDEDIT(1)
+MDEDIT(1)            Markdown editing               MDEDIT(1)
 
 # NAME
 

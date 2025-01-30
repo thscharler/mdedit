@@ -1,3 +1,8 @@
+# 0.5.1
+
+* fix: event-handling of file-dialog + error-dialog was
+  the wrong way around.
+
 # 0.5.0
 
 * feature: add 'file_pattern' and 'log' level to config.
