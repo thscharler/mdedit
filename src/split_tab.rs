@@ -1,6 +1,6 @@
+use crate::editor_file::{MDFile, MDFileState};
 use crate::event::MDEvent;
 use crate::global::GlobalState;
-use crate::md_file::{MDFile, MDFileState};
 use crate::AppContext;
 use anyhow::Error;
 use rat_salsa::timer::TimerDef;

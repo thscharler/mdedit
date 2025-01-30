@@ -1,7 +1,7 @@
+use crate::editor_file::MDFileState;
 use crate::event::MDEvent;
 use crate::file_list::{FileList, FileListState};
 use crate::global::GlobalState;
-use crate::md_file::MDFileState;
 use crate::split_tab::{SplitTab, SplitTabState};
 use crate::AppContext;
 use crate::FocusFlag;

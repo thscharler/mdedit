@@ -39,12 +39,12 @@ type AppContext<'a> = rat_salsa::AppContext<'a, GlobalState, MDEvent, Error>;
 
 mod config;
 mod editor;
+mod editor_file;
 mod event;
 mod facilities;
 mod file_list;
 mod fs_structure;
 mod global;
-mod md_file;
 mod split_tab;
 mod theme;
 

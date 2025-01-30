@@ -20,6 +20,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, BorderType, Borders, StatefulWidget};
+use std::cell::RefCell;
 use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -162,7 +163,9 @@ impl HasFocus for MDFileState {
 }
 
 #[derive(Debug, Default, Clone)]
-struct CliClipboard;
+struct CliClipboard {
+    clip: RefCell<String>,
+}
 
 impl Clipboard for CliClipboard {
     fn get_string(&self) -> Result<String, ClipboardError> {
@@ -170,12 +173,15 @@ impl Clipboard for CliClipboard {
             Ok(v) => Ok(v),
             Err(e) => {
                 warn!("{:?}", e);
-                Err(ClipboardError)
+                Ok(self.clip.borrow().clone())
             }
         }
     }
 
     fn set_string(&self, s: &str) -> Result<(), ClipboardError> {
+        let mut clip = self.clip.borrow_mut();
+        *clip = s.to_string();
+
         match cli_clipboard::set_contents(s.to_string()) {
             Ok(_) => Ok(()),
             Err(e) => {
@@ -203,29 +209,17 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
             }
             MDEvent::Event(event) => {
                 // call markdown event-handling instead of regular.
-                let mut r = match self.edit.handle(event, MarkDown::new(65)) {
-                    TextOutcome::TextChanged => self.text_changed(ctx),
+                let mut r = match self.edit.handle(event, MarkDown::new(ctx.g.cfg.text_width)) {
+                    TextOutcome::TextChanged => {
+                        self.update_cursor_pos(ctx);
+                        self.text_changed(ctx)
+                    }
                     r => r.into(),
                 };
-                if self.edit.is_focused() && r == Control::Changed {
-                    let cursor = self.edit.cursor();
-                    let sel = self.edit.selection();
-                    let sel_len = if sel.start.y == sel.end.y {
-                        sel.end.x.saturating_sub(sel.start.x)
-                    } else {
-                        sel.end.y.saturating_sub(sel.start.y) + 1
-                    };
-                    ctx.queue(Control::Event(MDEvent::Status(
-                        1,
-                        format!("{}:{}|{}", cursor.x, cursor.y, sel_len),
-                    )));
-                }
-
                 r = r.or_else_try(|| match event {
                     ct_event!(key press CONTROL-'l') => self.follow_link(),
                     _ => Ok(Control::Continue),
                 })?;
-
                 r
             }
             MDEvent::CfgNewline => {
@@ -287,7 +281,7 @@ impl MDFileState {
                 .to_string_lossy()
                 .as_ref(),
         );
-        text_area.set_clipboard(Some(CliClipboard));
+        text_area.set_clipboard(Some(CliClipboard::default()));
         text_area.set_newline(ctx.g.cfg.new_line.as_str());
         text_area.set_show_ctrl(ctx.g.cfg.show_ctrl);
         text_area.set_tab_width(4);
@@ -311,7 +305,7 @@ impl MDFileState {
                 .to_string_lossy()
                 .as_ref(),
         );
-        text_area.set_clipboard(Some(CliClipboard));
+        text_area.set_clipboard(Some(CliClipboard::default()));
         let t = fs::read_to_string(&path)?;
         text_area.set_text(t.as_str());
         text_area.set_newline(ctx.g.cfg.new_line.as_str());
@@ -359,15 +353,33 @@ impl MDFileState {
 
     // Format selected table
     pub fn md_format(&mut self, eq_width: bool, ctx: &mut AppContext<'_>) -> Control<MDEvent> {
-        match md_format(&mut self.edit, 65, eq_width) {
+        match md_format(&mut self.edit, ctx.g.cfg.text_width as usize, eq_width) {
             TextOutcome::TextChanged => self.text_changed(ctx),
             r => r.into(),
         }
     }
 
+    // Update cursor info
+    pub fn update_cursor_pos(&self, ctx: &mut AppContext<'_>) {
+        // update cursor / selection info
+        if self.edit.is_focused() {
+            let cursor = self.edit.cursor();
+            let sel = self.edit.selection();
+            let sel_len = if sel.start.y == sel.end.y {
+                sel.end.x.saturating_sub(sel.start.x)
+            } else {
+                sel.end.y.saturating_sub(sel.start.y) + 1
+            };
+            ctx.queue(Control::Event(MDEvent::Status(
+                1,
+                format!("{}:{}|{}", cursor.x, cursor.y, sel_len),
+            )));
+        }
+    }
+
     // Flag any text-changes.
     pub fn text_changed(&mut self, ctx: &mut AppContext<'_>) -> Control<MDEvent> {
-        self.changed = true;
+        self.changed = self.edit.undo_buffer().expect("undo").open_undo() > 0;
         // send sync
         ctx.queue(Control::Event(MDEvent::SyncEdit));
         // restart timer

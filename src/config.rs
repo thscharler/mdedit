@@ -9,9 +9,13 @@ pub struct MDConfig {
     pub theme: String,
     pub show_ctrl: bool,
     pub file_split_at: u16,
+    pub text_width: u16,
     pub new_line: String,
+
     pub load_file: Vec<PathBuf>,
+
     pub globs: Vec<String>,
+
     pub log: String,
 }
 
@@ -22,6 +26,22 @@ const LINE_ENDING: &str = "\r\n";
 const LINE_ENDING: &str = "\n";
 
 const DEFAULT_FILE_SPLIT_AT: u16 = 15;
+const DEFAULT_TEXT_WIDTH: u16 = 65;
+
+impl Default for MDConfig {
+    fn default() -> Self {
+        MDConfig {
+            theme: "Imperial".to_string(),
+            show_ctrl: false,
+            file_split_at: DEFAULT_FILE_SPLIT_AT,
+            text_width: DEFAULT_TEXT_WIDTH,
+            new_line: LINE_ENDING.into(),
+            load_file: Default::default(),
+            globs: vec!["*.md".to_string()],
+            log: "debug".to_string(),
+        }
+    }
+}
 
 impl MDConfig {
     pub fn load() -> Result<MDConfig, Error> {
@@ -31,7 +51,9 @@ impl MDConfig {
                 let ini = Ini::load_from_file(config)?;
 
                 let section: Option<String> = None;
+
                 let theme = ini.get_from_or(section.clone(), "theme", "Imperial");
+
                 let file_split_at = ini
                     .get_from_or(
                         section.clone(),
@@ -40,6 +62,16 @@ impl MDConfig {
                     )
                     .parse()
                     .unwrap_or(DEFAULT_FILE_SPLIT_AT);
+
+                let text_width = ini
+                    .get_from_or(
+                        section.clone(),
+                        "text_width",
+                        DEFAULT_TEXT_WIDTH.to_string().as_str(),
+                    )
+                    .parse()
+                    .unwrap_or(DEFAULT_TEXT_WIDTH);
+
                 let mut globs = ini
                     .get_from_or(section.clone(), "file_pattern", "*.md")
                     .split([' ', ','])
@@ -47,6 +79,7 @@ impl MDConfig {
                     .collect::<Vec<_>>();
                 globs.sort();
                 globs.dedup();
+
                 let log = ini
                     .get_from_or(section.clone(), "log", "warn")
                     .trim()
@@ -54,12 +87,11 @@ impl MDConfig {
 
                 Some(MDConfig {
                     theme: theme.into(),
-                    show_ctrl: false,
                     file_split_at,
-                    new_line: LINE_ENDING.into(),
-                    load_file: Default::default(),
+                    text_width,
                     globs,
                     log,
+                    ..Default::default()
                 })
             } else {
                 None
@@ -68,15 +100,7 @@ impl MDConfig {
             None
         };
 
-        Ok(cfg.unwrap_or(MDConfig {
-            theme: "Imperial".to_string(),
-            show_ctrl: false,
-            file_split_at: DEFAULT_FILE_SPLIT_AT,
-            new_line: LINE_ENDING.into(),
-            load_file: Default::default(),
-            globs: vec!["*.md".to_string()],
-            log: "debug".to_string(),
-        }))
+        Ok(cfg.unwrap_or(MDConfig::default()))
     }
 
     pub fn store(&self) -> Result<(), Error> {
@@ -94,6 +118,11 @@ impl MDConfig {
                 section.clone(),
                 "file_split_at".into(),
                 self.file_split_at.to_string(),
+            );
+            ini.set_to(
+                section.clone(),
+                "text_width".into(),
+                self.text_width.to_string(),
             );
             ini.set_to(
                 section.clone(),
