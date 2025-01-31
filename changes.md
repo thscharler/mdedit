@@ -1,3 +1,7 @@
+# 0.5.2
+
+* fix: switch to rat-theme2
+
 # 0.5.1
 
 * fix: event-handling of file-dialog + error-dialog was
