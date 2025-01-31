@@ -3,8 +3,8 @@
 //!
 
 use rat_theme2::schemes::{
-    BASE16, BASE16_RELAXED, IMPERIAL, MONEKAI, MONOCHROME, OCEAN, OXOCARBON, RADIUM, TUNDRA,
-    VSCODE_DARK,
+    BASE16, BASE16_RELAXED, BLACKWHITE, IMPERIAL, MONEKAI, MONOCHROME, OCEAN, OXOCARBON, RADIUM,
+    TUNDRA, VSCODE_DARK,
 };
 use rat_theme2::{Contrast, Scheme, TextColorRating};
 use rat_widget::button::ButtonStyle;
@@ -197,12 +197,12 @@ impl DarkTheme {
 
     /// Focused text field style.
     pub fn text_focus(&self) -> Style {
-        self.style(self.s.primary[0])
+        Style::new().underlined()
     }
 
     /// Text selection style.
     pub fn text_select(&self) -> Style {
-        self.style(self.s.secondary[0])
+        Style::new().reversed()
     }
 
     /// Container base
@@ -342,7 +342,7 @@ impl DarkTheme {
     pub fn choice_style(&self) -> ChoiceStyle {
         ChoiceStyle {
             style: self.text_input(),
-            select: Some(self.text_focus()),
+            select: Some(self.text_select()),
             focus: Some(self.text_focus()),
             popup: PopupStyle {
                 style: self.popup_base(),
@@ -672,12 +672,17 @@ impl DarkTheme {
         }
     }
 
+    /// Text selection style.
+    pub fn doc_text_select(&self) -> Style {
+        Style::new().reversed()
+    }
+
     /// Complete TextAreaStyle
     pub fn textarea_style_doc(&self) -> TextStyle {
         TextStyle {
             style: self.doc_base(),
             focus: Some(self.focus()),
-            select: Some(self.text_select()),
+            select: Some(self.doc_text_select()),
             scroll: Some(self.doc_scroll_style()),
             border_style: Some(self.doc_border()),
             ..TextStyle::default()
@@ -700,6 +705,7 @@ impl DarkTheme {
 pub fn dark_themes() -> Vec<DarkTheme> {
     vec![
         DarkTheme::new("Imperial".to_string(), IMPERIAL),
+        DarkTheme::new("Black&White".to_string(), BLACKWHITE),
         DarkTheme::new("Radium".to_string(), RADIUM),
         DarkTheme::new("Tundra".to_string(), TUNDRA),
         DarkTheme::new("Monochrome".to_string(), MONOCHROME),
