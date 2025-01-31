@@ -1,3 +1,7 @@
+# 0.5.4
+
+* feature: add Black&White theme
+
 # 0.5.3
 
 * fix: switch to rat-theme2
