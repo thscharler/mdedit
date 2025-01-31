@@ -182,12 +182,12 @@ impl DarkTheme {
 
     /// Focus style
     pub fn focus(&self) -> Style {
-        self.style(self.s.primary[2])
+        self.high_style(self.s.primary[2])
     }
 
     /// Selection style
     pub fn select(&self) -> Style {
-        self.style(self.s.secondary[1])
+        self.high_style(self.s.secondary[1])
     }
 
     /// Text field style.
@@ -197,12 +197,12 @@ impl DarkTheme {
 
     /// Focused text field style.
     pub fn text_focus(&self) -> Style {
-        Style::new().underlined()
+        Style::new().reversed()
     }
 
     /// Text selection style.
     pub fn text_select(&self) -> Style {
-        Style::new().reversed()
+        Style::new().underlined()
     }
 
     /// Container base
@@ -217,7 +217,7 @@ impl DarkTheme {
 
     /// Container arrows
     pub fn container_arrow(&self) -> Style {
-        self.container_base().fg(self.s.secondary[0])
+        self.container_base().fg(self.s.gray[0])
     }
 
     /// Background for popups.
@@ -237,7 +237,7 @@ impl DarkTheme {
 
     /// Dialog arrows
     pub fn popup_arrow(&self) -> Style {
-        self.popup_base().fg(self.s.secondary[0])
+        self.popup_base().fg(self.s.gray[0])
     }
 
     /// Background for dialogs.
@@ -257,7 +257,7 @@ impl DarkTheme {
 
     /// Dialog arrows
     pub fn dialog_arrow(&self) -> Style {
-        self.dialog_base().fg(self.s.secondary[2])
+        self.dialog_base().fg(self.s.white[0])
     }
 
     /// Style for the status line.
@@ -495,8 +495,9 @@ impl DarkTheme {
 
     /// Tabbed style
     pub fn tabbed_style(&self) -> TabbedStyle {
+        let style = self.high_style(self.s.black[1]);
         TabbedStyle {
-            style: self.container_border(),
+            style,
             tab: Some(self.gray(1)),
             select: Some(self.gray(3)),
             focus: Some(self.focus()),
@@ -592,7 +593,7 @@ impl DarkTheme {
     pub fn choice_style_tools(&self) -> ChoiceStyle {
         ChoiceStyle {
             style: self.container_base(),
-            select: Some(self.focus()),
+            select: Some(self.select()),
             focus: Some(self.focus()),
             popup: PopupStyle {
                 style: self.container_base(),
@@ -628,7 +629,7 @@ impl DarkTheme {
     /// Container arrows
     pub fn doc_arrow(&self) -> Style {
         Style::default()
-            .fg(self.s.secondary[0])
+            .fg(self.s.gray[0])
             .bg(self.doc_base_color())
     }
 
