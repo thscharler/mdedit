@@ -61,7 +61,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
         ctx: &mut RenderContext<'_, GlobalState>,
     ) -> Result<(), Error> {
         let theme = &ctx.g.theme;
-        let scheme = &ctx.g.theme.s();
+        let scheme = &ctx.g.scheme();
 
         let l_file_list = Layout::vertical([
             Constraint::Length(1),

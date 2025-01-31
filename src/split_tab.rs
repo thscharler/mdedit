@@ -5,6 +5,7 @@ use crate::AppContext;
 use anyhow::Error;
 use rat_salsa::timer::TimerDef;
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
+use rat_theme2::Contrast;
 use rat_widget::event::{try_flow, ConsumedEvent, HandleEvent, Regular, TabbedOutcome};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::splitter::{Split, SplitState, SplitType};
@@ -55,6 +56,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
         ctx: &mut RenderContext<'_, GlobalState>,
     ) -> Result<(), Error> {
         let theme = ctx.g.theme.clone();
+        let scheme = theme.scheme();
 
         let (split, split_overlay) = Split::horizontal()
             .constraints(vec![Constraint::Fill(1); state.tabbed.len()])
@@ -72,7 +74,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
                     if state.tabbed[idx_split].is_focused() {
                         theme.tabbed_style().focus.expect("style")
                     } else if md.is_focused() {
-                        theme.s().primary(1)
+                        scheme.primary(1, Contrast::Normal)
                     } else {
                         theme.tabbed_style().select.expect("style")
                     }

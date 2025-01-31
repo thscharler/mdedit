@@ -12,7 +12,7 @@ use log::{error, set_max_level};
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
-use rat_theme::scheme::IMPERIAL;
+use rat_theme2::schemes::IMPERIAL;
 use rat_widget::event::{
     ct_event, try_flow, ConsumedEvent, Dialog, HandleEvent, MenuOutcome, Popup,
 };
@@ -33,6 +33,7 @@ use std::cmp::max;
 use std::env::args;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::str::from_utf8;
 use std::time::Duration;
 use std::{env, fs, mem};
@@ -196,6 +197,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
         ctx: &mut RenderContext<'_, GlobalState>,
     ) -> Result<(), Error> {
         let theme = ctx.g.theme.clone();
+        let scheme = theme.scheme();
 
         let r = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).split(area);
         let s = Layout::horizontal([Constraint::Percentage(61), Constraint::Percentage(39)])
@@ -274,8 +276,8 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
                     Block::bordered()
                         .style(
                             Style::default() //
-                                .fg(theme.s().white[2])
-                                .bg(theme.s().deepblue[0]),
+                                .fg(scheme.white[2])
+                                .bg(scheme.deepblue[0]),
                         )
                         .border_type(BorderType::Rounded)
                         .title_style(Style::new().fg(ctx.g.scheme().bluegreen[0]))
@@ -545,11 +547,11 @@ impl MDAppState {
             MenuOutcome::MenuActivated(2, 4) => Control::Event(MDEvent::JumpToFiles),
             MenuOutcome::MenuActivated(2, 5) => Control::Event(MDEvent::HideFiles),
             MenuOutcome::MenuSelected(3, n) => {
-                ctx.g.theme = dark_themes()[n].clone();
+                ctx.g.theme = Rc::new(dark_themes()[n].clone());
                 Control::Changed
             }
             MenuOutcome::MenuActivated(3, n) => {
-                ctx.g.theme = dark_themes()[n].clone();
+                ctx.g.theme = Rc::new(dark_themes()[n].clone());
                 ctx.g.cfg.theme = ctx.g.theme.name().into();
                 ctx.queue(Control::Event(MDEvent::StoreConfig));
                 Control::Changed

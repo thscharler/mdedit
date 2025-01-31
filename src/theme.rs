@@ -2,11 +2,11 @@
 //! Implements a dark theme.
 //!
 
-use rat_theme::scheme::{
+use rat_theme2::schemes::{
     BASE16, BASE16_RELAXED, IMPERIAL, MONEKAI, MONOCHROME, OCEAN, OXOCARBON, RADIUM, TUNDRA,
     VSCODE_DARK,
 };
-use rat_theme::Scheme;
+use rat_theme2::{Contrast, Scheme, TextColorRating};
 use rat_widget::button::ButtonStyle;
 use rat_widget::calendar::CalendarStyle;
 use rat_widget::checkbox::CheckboxStyle;
@@ -64,109 +64,221 @@ impl DarkTheme {
     }
 
     /// The underlying scheme.
-    pub fn s(&self) -> &Scheme {
+    pub fn scheme(&self) -> &Scheme {
         &self.s
+    }
+
+    /// Create a style from a background color
+    pub fn style(&self, bg: Color) -> Style {
+        self.s.style(bg, Contrast::Normal)
+    }
+
+    /// Create a style from a background color
+    pub fn high_style(&self, bg: Color) -> Style {
+        self.s.style(bg, Contrast::High)
+    }
+
+    /// Create a style from the given white shade.
+    /// n is `0..=3`
+    pub fn white(&self, n: usize) -> Style {
+        self.s.style(self.s.white[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given black shade.
+    /// n is `0..=3`
+    pub fn black(&self, n: usize) -> Style {
+        self.s.style(self.s.black[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given gray shade.
+    /// n is `0..=3`
+    pub fn gray(&self, n: usize) -> Style {
+        self.s.style(self.s.gray[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given red shade.
+    /// n is `0..=3`
+    pub fn red(&self, n: usize) -> Style {
+        self.s.style(self.s.red[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given orange shade.
+    /// n is `0..=3`
+    pub fn orange(&self, n: usize) -> Style {
+        self.s.style(self.s.orange[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given yellow shade.
+    /// n is `0..=3`
+    pub fn yellow(&self, n: usize) -> Style {
+        self.s.style(self.s.yellow[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given limegreen shade.
+    /// n is `0..=3`
+    pub fn limegreen(&self, n: usize) -> Style {
+        self.s.style(self.s.limegreen[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given green shade.
+    /// n is `0..=3`
+    pub fn green(&self, n: usize) -> Style {
+        self.s.style(self.s.green[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given bluegreen shade.
+    /// n is `0..=3`
+    pub fn bluegreen(&self, n: usize) -> Style {
+        self.s.style(self.s.bluegreen[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given cyan shade.
+    /// n is `0..=3`
+    pub fn cyan(&self, n: usize) -> Style {
+        self.s.style(self.s.cyan[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given blue shade.
+    /// n is `0..=3`
+    pub fn blue(&self, n: usize) -> Style {
+        self.s.style(self.s.blue[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given deepblue shade.
+    /// n is `0..=3`
+    pub fn deepblue(&self, n: usize) -> Style {
+        self.s.style(self.s.deepblue[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given purple shade.
+    /// n is `0..=3`
+    pub fn purple(&self, n: usize) -> Style {
+        self.s.style(self.s.purple[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given magenta shade.
+    /// n is `0..=3`
+    pub fn magenta(&self, n: usize) -> Style {
+        self.s.style(self.s.magenta[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given redpink shade.
+    /// n is `0..=3`
+    pub fn redpink(&self, n: usize) -> Style {
+        self.s.style(self.s.redpink[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given primary shade.
+    /// n is `0..=3`
+    pub fn primary(&self, n: usize) -> Style {
+        self.s.style(self.s.primary[n], Contrast::Normal)
+    }
+
+    /// Create a style from the given secondary shade.
+    /// n is `0..=3`
+    pub fn secondary(&self, n: usize) -> Style {
+        self.s.style(self.s.secondary[n], Contrast::Normal)
     }
 
     /// Focus style
     pub fn focus(&self) -> Style {
-        self.s.style(self.s.primary[2])
+        self.style(self.s.primary[2])
     }
 
     /// Selection style
     pub fn select(&self) -> Style {
-        self.s.style(self.s.secondary[1])
+        self.style(self.s.secondary[1])
     }
 
     /// Text field style.
     pub fn text_input(&self) -> Style {
-        self.s.style(self.s.gray[3])
+        self.style(self.s.gray[3])
     }
 
     /// Focused text field style.
     pub fn text_focus(&self) -> Style {
-        self.s.style(self.s.primary[0])
+        self.style(self.s.primary[0])
     }
 
     /// Text selection style.
     pub fn text_select(&self) -> Style {
-        self.s.style(self.s.secondary[0])
+        self.style(self.s.secondary[0])
     }
 
     /// Container base
     pub fn container_base(&self) -> Style {
-        self.s.style(self.s.black[0])
+        self.style(self.s.black[1])
     }
 
     /// Container border
     pub fn container_border(&self) -> Style {
-        Style::default().fg(self.s.gray[0]).bg(self.s.black[0])
+        self.container_base().fg(self.s.gray[0])
     }
 
     /// Container arrows
     pub fn container_arrow(&self) -> Style {
-        Style::default().fg(self.s.secondary[0]).bg(self.s.black[0])
+        self.container_base().fg(self.s.secondary[0])
     }
 
     /// Background for popups.
     pub fn popup_base(&self) -> Style {
-        self.s.style(self.s.white[0])
+        self.style(self.s.white[0])
     }
 
     /// Label text inside container.
     pub fn popup_label(&self) -> Style {
-        self.s.style(self.s.white[0])
+        self.style(self.s.white[0])
     }
 
     /// Dialog arrows
     pub fn popup_border(&self) -> Style {
-        Style::default().fg(self.s.gray[0]).bg(self.s.white[0])
+        self.popup_base().fg(self.s.gray[0])
     }
 
     /// Dialog arrows
     pub fn popup_arrow(&self) -> Style {
-        Style::default().fg(self.s.secondary[0]).bg(self.s.white[0])
+        self.popup_base().fg(self.s.secondary[0])
     }
 
     /// Background for dialogs.
     pub fn dialog_base(&self) -> Style {
-        self.s.style(self.s.gray[1])
+        self.style(self.s.gray[1])
     }
 
     /// Label text inside container.
     pub fn dialog_label(&self) -> Style {
-        self.s.style(self.s.gray[1])
+        self.dialog_base()
     }
 
     /// Dialog arrows
     pub fn dialog_border(&self) -> Style {
-        Style::default().fg(self.s.white[0]).bg(self.s.gray[1])
+        self.dialog_base().fg(self.s.white[0])
     }
 
     /// Dialog arrows
     pub fn dialog_arrow(&self) -> Style {
-        Style::default().fg(self.s.secondary[2]).bg(self.s.gray[1])
+        self.dialog_base().fg(self.s.secondary[2])
     }
 
     /// Style for the status line.
     pub fn status_base(&self) -> Style {
-        Style::default().fg(self.s.white[0]).bg(self.s.black[0])
+        self.style(self.s.black[2])
     }
 
     /// Base style for buttons.
     pub fn button_base(&self) -> Style {
-        self.s.style(self.s.gray[2])
+        self.style(self.s.gray[2])
     }
 
     /// Armed style for buttons.
     pub fn button_armed(&self) -> Style {
-        self.s.style(self.s.secondary[0])
+        self.style(self.s.secondary[0])
     }
 
     /// Complete MonthStyle.
     pub fn month_style(&self) -> CalendarStyle {
         CalendarStyle {
-            style: self.s.style(self.s.black[2]),
+            style: self.style(self.s.black[2]),
             title: None,
             weeknum: Some(Style::new().fg(self.s.limegreen[2])),
             weekday: Some(Style::new().fg(self.s.limegreen[2])),
@@ -266,42 +378,17 @@ impl DarkTheme {
 
     /// Complete MenuStyle
     pub fn menu_style(&self) -> MenuStyle {
+        let menu = Style::default().fg(self.s.white[3]).bg(self.s.black[2]);
         MenuStyle {
-            style: self.status_base(),
-            title: Some(Style::default().fg(self.s.black[0]).bg(self.s.yellow[0])),
+            style: menu,
+            title: Some(Style::default().fg(self.s.black[0]).bg(self.s.yellow[2])),
             select: Some(self.select()),
             focus: Some(self.focus()),
             right: Some(Style::default().fg(self.s.bluegreen[0])),
             disabled: Some(Style::default().fg(self.s.gray[0])),
             highlight: Some(Style::default().underlined()),
             popup: PopupStyle {
-                style: self.status_base(),
-                block: Some(Block::bordered()),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }
-
-    /// Complete MenuStyle
-    pub fn menu_style_hidden(&self) -> MenuStyle {
-        let mut style = self.status_base();
-        style = style.fg(self.s.gray[0]);
-
-        MenuStyle {
-            style,
-            title: Some(
-                Style::default()
-                    .fg(self.s.black[0])
-                    .bg(self.s.true_dark_color(self.s.red[3])),
-            ),
-            select: Some(style),
-            focus: Some(style),
-            right: Some(Style::default().fg(self.s.bluegreen[0])),
-            disabled: Some(Style::default().fg(self.s.gray[0])),
-            highlight: Some(Style::default().underlined()),
-            popup: PopupStyle {
-                style: self.status_base(),
+                style: menu,
                 block: Some(Block::bordered()),
                 ..Default::default()
             },
@@ -334,19 +421,17 @@ impl DarkTheme {
     }
 
     pub fn table_header(&self) -> Style {
-        self.s.style(self.s.blue[2])
+        self.style(self.s.blue[2])
     }
 
     pub fn table_footer(&self) -> Style {
-        self.s.style(self.s.blue[2])
+        self.style(self.s.blue[2])
     }
 
     /// Complete ListStyle
     pub fn list_style(&self) -> ListStyle {
-        let mut base = self.container_base();
-        base = base.fg(self.s.reduced_text_color(base.bg.expect("bg")));
         ListStyle {
-            style: base,
+            style: self.container_base(),
             select: Some(self.select()),
             focus: Some(self.focus()),
             scroll: Some(self.scroll_style()),
@@ -412,8 +497,8 @@ impl DarkTheme {
     pub fn tabbed_style(&self) -> TabbedStyle {
         TabbedStyle {
             style: self.container_border(),
-            tab: Some(self.s.gray(1)),
-            select: Some(self.s.gray(3)),
+            tab: Some(self.gray(1)),
+            select: Some(self.gray(3)),
             focus: Some(self.focus()),
             ..Default::default()
         }
@@ -426,15 +511,9 @@ impl DarkTheme {
     pub fn statusline_style(&self) -> Vec<Style> {
         vec![
             self.status_base(),
-            Style::default()
-                .fg(self.s.text_color(self.s.white[0]))
-                .bg(self.s.blue[3]),
-            Style::default()
-                .fg(self.s.text_color(self.s.white[0]))
-                .bg(self.s.blue[2]),
-            Style::default()
-                .fg(self.s.text_color(self.s.white[0]))
-                .bg(self.s.blue[1]),
+            self.s.normal_contrast(self.s.white[0]).bg(self.s.blue[3]),
+            self.s.normal_contrast(self.s.white[0]).bg(self.s.blue[2]),
+            self.s.normal_contrast(self.s.white[0]).bg(self.s.blue[1]),
         ]
     }
 
@@ -488,6 +567,28 @@ impl DarkTheme {
 
     /// ----------------------
 
+    /// Complete MenuStyle
+    pub fn menu_style_hidden(&self) -> MenuStyle {
+        let mut style = self.status_base();
+        style = style.fg(self.s.gray[0]);
+
+        MenuStyle {
+            style,
+            title: Some(Style::default().fg(self.s.black[0]).bg(self.s.red[7])),
+            select: Some(style),
+            focus: Some(style),
+            right: Some(Style::default().fg(self.s.bluegreen[0])),
+            disabled: Some(Style::default().fg(self.s.gray[0])),
+            highlight: Some(Style::default().underlined()),
+            popup: PopupStyle {
+                style: self.status_base(),
+                block: Some(Block::bordered()),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
     pub fn choice_style_tools(&self) -> ChoiceStyle {
         ChoiceStyle {
             style: self.container_base(),
@@ -510,11 +611,11 @@ impl DarkTheme {
     /// ----------------------
 
     pub fn doc_base_color(&self) -> Color {
-        self.s.true_dark_color(self.s.green[0])
+        self.s.limegreen[Scheme::DARK_0]
     }
 
     pub fn doc_base(&self) -> Style {
-        self.s.reduced_style(self.doc_base_color())
+        self.style(self.doc_base_color())
     }
 
     /// Container border
@@ -559,10 +660,10 @@ impl DarkTheme {
 
     /// Style for LineNumbers.
     pub fn line_nr_style_doc(&self) -> LineNumberStyle {
-        let fg = match self.s.rate_text_color(self.doc_base().bg.expect("bg")) {
+        let fg = match Scheme::rate_text_color(self.doc_base().bg.expect("bg")) {
             None => self.s.gray[3],
-            Some(true) => self.s.gray[3],
-            Some(false) => self.s.gray[0],
+            Some(TextColorRating::Light) => self.s.gray[3],
+            Some(TextColorRating::Dark) => self.s.gray[0],
         };
         LineNumberStyle {
             style: self.doc_base().fg(fg),
@@ -587,8 +688,8 @@ impl DarkTheme {
     pub fn tabbed_style_doc(&self) -> TabbedStyle {
         TabbedStyle {
             style: self.doc_border(),
-            tab: Some(self.s.gray(1)),
-            select: Some(self.s.gray(3)),
+            tab: Some(self.gray(1)),
+            select: Some(self.gray(3)),
             focus: Some(self.focus()),
             ..Default::default()
         }
