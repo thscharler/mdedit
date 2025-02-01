@@ -181,6 +181,9 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
         &mut self,
         _ctx: &mut AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<(), Error> {
+        if !self.sys.files.is_empty() {
+            self.file_list.select(Some(0));
+        }
         Ok(())
     }
 

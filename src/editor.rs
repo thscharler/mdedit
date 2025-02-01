@@ -78,7 +78,6 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
     fn init(&mut self, ctx: &mut AppContext<'_>) -> Result<(), Error> {
         self.file_list.init(ctx)?;
         self.split_tab.init(ctx)?;
-
         Ok(())
     }
 
@@ -122,7 +121,8 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
             MDEvent::SyncEdit => self.sync_edit(ctx)?,
             MDEvent::FileSys(fs) => {
                 self.file_list.sys = fs.take();
-                Control::Changed
+                self.file_list.init(ctx)?;
+                Control::Event(MDEvent::JumpToFiles)
             }
             _ => Control::Continue,
         };

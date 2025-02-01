@@ -161,7 +161,7 @@ pub struct MDAppState {
     pub editor: MDEditState,
     pub menu: MenubarState,
     pub status: StatusLineState,
-    pub clean_start: TimerHandle,
+    pub clear_status: TimerHandle,
 
     pub window_cmd: bool,
 
@@ -176,7 +176,7 @@ impl Default for MDAppState {
             editor: MDEditState::default(),
             menu: MenubarState::named("menu"),
             status: Default::default(),
-            clean_start: Default::default(),
+            clear_status: Default::default(),
             window_cmd: false,
             message_dlg: Default::default(),
             error_dlg: Default::default(),
@@ -311,11 +311,11 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         ctx.focus = Some(FocusBuilder::build_for(self));
 
         self.editor.init(ctx)?;
+
         self.menu.bar.select(Some(0));
-        self.menu.focus().set(true);
         self.status
             .status(0, format!("mdedit {}", env!("CARGO_PKG_VERSION")));
-        self.clean_start = ctx.add_timer(TimerDef::new().timer(Duration::from_secs(1)));
+        self.clear_status = ctx.add_timer(TimerDef::new().timer(Duration::from_secs(1)));
 
         if ctx.g.cfg.load_file.is_empty() {
             let cwd = env::current_dir()?;
@@ -332,6 +332,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 _ = self.editor.open_no_sync(&load, ctx)?;
             }
             _ = self.editor.sync_file_list(ctx)?;
+            _ = self.editor.select_tab_at(0, 0, ctx)?;
         }
 
         Ok(())
@@ -421,7 +422,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 Control::Continue
             }
             MDEvent::TimeOut(t) => {
-                if t.handle == self.clean_start {
+                if t.handle == self.clear_status {
                     self.status.status(0, "");
                     Control::Changed
                 } else {
