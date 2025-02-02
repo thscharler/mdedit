@@ -15,6 +15,8 @@ pub enum MDEvent {
     MenuOpen,
     MenuSave,
     MenuSaveAs,
+    MenuFormat,
+    MenuFormatEq,
 
     CfgShowCtrl,
     CfgNewline,
@@ -38,6 +40,7 @@ pub enum MDEvent {
     NextEditSplit,
     HideFiles,
     Close,
+    CloseAll,
     CloseAt(usize, usize),
     SelectAt(usize, usize),
     StoreConfig,

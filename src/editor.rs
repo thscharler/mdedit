@@ -105,6 +105,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
             MDEvent::Save => self.save(ctx)?,
             MDEvent::SaveAs(p) => self.save_as(p, ctx)?,
             MDEvent::Close => self.close_selected_tab(ctx)?,
+            MDEvent::CloseAll => self.close_all(ctx)?,
             MDEvent::CloseAt(idx_split, idx_tab) => self.close_tab_at(*idx_split, *idx_tab, ctx)?,
             MDEvent::SelectAt(idx_split, idx_tab) => {
                 self.select_tab_at(*idx_split, *idx_tab, ctx)?
@@ -362,6 +363,23 @@ impl MDEditState {
             self.split_tab.close((pos.0, pos.1), ctx)?;
             if let Some((idx, _)) = self.split_tab.selected() {
                 self.split_tab.select(idx, ctx);
+            }
+            Ok(Control::Changed)
+        } else {
+            Ok(Control::Continue)
+        }
+    }
+
+    // Close all
+    pub fn close_all(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+        if let Some(pos) = self.split_tab.selected_pos() {
+            for i in (0..self.split_tab.tabs[pos.0].len()).rev() {
+                self.split_tab.close((pos.0, i), ctx)?;
+            }
+            if let Some(idx) = self.split_tab.sel_split {
+                self.split_tab.select((idx, 0), ctx);
+            } else {
+                ctx.focus().focus(&self.file_list.file_list);
             }
             Ok(Control::Changed)
         } else {

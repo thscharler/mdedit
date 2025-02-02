@@ -395,6 +395,7 @@ impl DarkTheme {
             style: self.button_base(),
             focus: Some(self.focus()),
             armed: Some(self.select()),
+            hover: Some(self.select()),
             armed_delay: Some(Duration::from_millis(50)),
             ..Default::default()
         }

@@ -41,6 +41,7 @@ use std::{env, fs, mem};
 type AppContext<'a> = rat_salsa::AppContext<'a, GlobalState, MDEvent, Error>;
 
 mod config;
+mod doc_type;
 mod editor;
 mod editor_file;
 mod event;
@@ -362,6 +363,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                     ct_event!(key press CONTROL-'q') => Control::Quit,
                     ct_event!(key press CONTROL-'e') => Control::Event(MDEvent::Close),
                     ct_event!(keycode press CONTROL-F(4)) => Control::Event(MDEvent::Close),
+                    ct_event!(key press CONTROL_SHIFT-'E') => Control::Event(MDEvent::CloseAll),
+                    ct_event!(keycode press CONTROL_SHIFT-F(4)) => {
+                        Control::Event(MDEvent::CloseAll)
+                    }
                     ct_event!(key press CONTROL-'n') => Control::Event(MDEvent::MenuNew),
                     ct_event!(key press CONTROL-'o') => Control::Event(MDEvent::MenuOpen),
                     ct_event!(key press CONTROL-'s') => Control::Event(MDEvent::Save),
@@ -517,7 +522,7 @@ impl MDAppState {
             MenuOutcome::MenuActivated(1, 0) => {
                 if let Some((_, sel)) = self.editor.split_tab.selected_mut() {
                     ctx.focus().focus(sel);
-                    sel.md_format(false, ctx)
+                    Control::Event(MDEvent::MenuFormat)
                 } else {
                     Control::Continue
                 }
@@ -525,7 +530,7 @@ impl MDAppState {
             MenuOutcome::MenuActivated(1, 1) => {
                 if let Some((_, sel)) = self.editor.split_tab.selected_mut() {
                     ctx.focus().focus(sel);
-                    sel.md_format(true, ctx)
+                    Control::Event(MDEvent::MenuFormat)
                 } else {
                     Control::Continue
                 }

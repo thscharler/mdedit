@@ -63,6 +63,9 @@ If the file is already open it is selected instead.
 | Ctrl+F4                      |                                  |
 | Ctrl+e                       | Close the current window         |
 |                              |                                  |
+| Ctrl+Shift+F4                | Close all windows in the current |
+| Ctrl+Shift+e                 | split.                           |
+|                              |                                  |
 | Ctrl-W d                     |                                  |
 | Ctrl-W +                     | Split view                       |
 
@@ -141,7 +144,6 @@ If the file is already open it is selected instead.
 |                              |                                  |
 | F7                           | Alternate format.                |
 |                              | Formats a table to with all      |
-|                              | equal                            |
-|                              | column widths.                   |
+|                              | equal column widths.             |
 |                              |                                  |
 | Alt+1 .. Alt+6               | Flip header.                     |
