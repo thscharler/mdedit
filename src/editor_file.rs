@@ -19,9 +19,10 @@ use rat_widget::text::{upos_type, HasScreenCursor};
 use rat_widget::textarea::{TextArea, TextAreaState};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Style, Stylize};
+use ratatui::style::{Color, Style, Stylize};
 use ratatui::widgets::{Block, BorderType, Borders, StatefulWidget};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -91,7 +92,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDFile {
             )
             .vscroll(Scroll::new().start_margin(self.start_margin))
             .styles(theme.textarea_style_doc())
-            .text_style(text_style(ctx))
+            .text_style_map(text_style(ctx))
             .render(text_area, buf, &mut state.edit);
         ctx.set_screen_cursor(state.edit.screen_cursor());
 
@@ -99,50 +100,58 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDFile {
     }
 }
 
-fn text_style(ctx: &mut RenderContext<'_, GlobalState>) -> [Style; 34] {
-    // base-style: Style::default().fg(self.s.white[0]).bg(self.s.black[1])
-    [
-        Style::default().fg(ctx.g.scheme().yellow[2]).underlined(), // Heading1,
-        Style::default().fg(ctx.g.scheme().yellow[1]).underlined(), // Heading2,
-        Style::default().fg(ctx.g.scheme().yellow[1]).underlined(), // Heading3,
-        Style::default().fg(ctx.g.scheme().orange[2]).underlined(), // Heading4,
-        Style::default().fg(ctx.g.scheme().orange[1]).underlined(), // Heading5,
-        Style::default().fg(ctx.g.scheme().orange[1]).underlined(), // Heading6,
-        //
-        Style::default(),                               // Paragraph
-        Style::default().fg(ctx.g.scheme().orange[3]),  // BlockQuote,
-        Style::default().fg(ctx.g.scheme().redpink[3]), // CodeBlock,
-        Style::default().fg(ctx.g.scheme().redpink[3]), // MathDisplay
-        Style::default().fg(ctx.g.scheme().white[3]),   // Rule
-        Style::default().fg(ctx.g.scheme().gray[3]),    // Html
-        //
-        Style::default().fg(ctx.g.scheme().bluegreen[2]), // Link
-        Style::default().fg(ctx.g.scheme().bluegreen[2]), // LinkDef
-        Style::default().fg(ctx.g.scheme().bluegreen[2]), // Image
-        Style::default().fg(ctx.g.scheme().bluegreen[3]), // Footnote Definition
-        Style::default().fg(ctx.g.scheme().bluegreen[2]), // Footnote Reference
-        //
-        Style::default(),                              // List
-        Style::default(),                              // Item
-        Style::default().fg(ctx.g.scheme().orange[2]), // TaskListMarker
-        Style::default().fg(ctx.g.scheme().orange[2]), // ItemTag
-        Style::default(),                              // DefinitionList
-        Style::default().fg(ctx.g.scheme().orange[3]), // DefinitionListTitle
-        Style::default().fg(ctx.g.scheme().orange[2]), // DefinitionListDefinition
-        //
-        Style::default(),                                 // Table
-        Style::default().fg(ctx.g.scheme().secondary[1]), // Table-Head
-        Style::default(),                                 // Table-Row
-        Style::default(),                                 // Table-Cell
-        //
-        Style::default().fg(ctx.g.scheme().white[0]).italic(), // Emphasis
-        Style::default().fg(ctx.g.scheme().white[3]).bold(),   // Strong
-        Style::default().fg(ctx.g.scheme().gray[3]).crossed_out(), // Strikethrough
-        Style::default().fg(ctx.g.scheme().redpink[3]),        // CodeInline
-        Style::default().fg(ctx.g.scheme().redpink[3]),        // MathInline
-        //
-        Style::default().fg(ctx.g.scheme().orange[2]), // MetadataBlock
-    ]
+fn text_style(ctx: &mut RenderContext<'_, GlobalState>) -> HashMap<usize, Style> {
+    let sc = ctx.g.scheme();
+    let sty = |c: Color| Style::new().fg(c);
+
+    let mut map = HashMap::new();
+
+    //let base = sc.white[0];
+    map.insert(MDStyle::Heading1.into(), sty(sc.white[3]).underlined());
+    map.insert(MDStyle::Heading2.into(), sty(sc.white[3]).underlined());
+    map.insert(MDStyle::Heading3.into(), sty(sc.white[2]).underlined());
+    map.insert(MDStyle::Heading4.into(), sty(sc.white[2]).underlined());
+    map.insert(MDStyle::Heading5.into(), sty(sc.white[1]).underlined());
+    map.insert(MDStyle::Heading6.into(), sty(sc.white[1]).underlined());
+
+    map.insert(MDStyle::Paragraph.into(), Style::new());
+    map.insert(MDStyle::BlockQuote.into(), sty(sc.orange[2]));
+    map.insert(MDStyle::CodeBlock.into(), sty(sc.redpink[2]));
+    map.insert(MDStyle::MathDisplay.into(), sty(sc.redpink[2]));
+    map.insert(MDStyle::Rule.into(), sty(sc.white[2]));
+    map.insert(MDStyle::Html.into(), sty(sc.gray[2]));
+
+    map.insert(MDStyle::Link.into(), sty(sc.bluegreen[1]).underlined());
+    map.insert(MDStyle::LinkDef.into(), sty(sc.bluegreen[1]));
+    map.insert(MDStyle::Image.into(), sty(sc.bluegreen[1]).underlined());
+    map.insert(MDStyle::FootnoteDefinition.into(), sty(sc.bluegreen[2]));
+    map.insert(
+        MDStyle::FootnoteReference.into(),
+        sty(sc.bluegreen[1]).underlined(),
+    );
+
+    map.insert(MDStyle::List.into(), Style::new());
+    map.insert(MDStyle::Item.into(), Style::new());
+    map.insert(MDStyle::TaskListMarker.into(), sty(sc.orange[1]));
+    map.insert(MDStyle::ItemTag.into(), sty(sc.orange[1]));
+    map.insert(MDStyle::DefinitionList.into(), Style::new());
+    map.insert(MDStyle::DefinitionListTitle.into(), sty(sc.orange[2]));
+    map.insert(MDStyle::DefinitionListDefinition.into(), sty(sc.orange[1]));
+
+    map.insert(MDStyle::Table.into(), Style::new());
+    map.insert(MDStyle::TableHead.into(), sty(sc.orange[2]));
+    map.insert(MDStyle::TableRow.into(), Style::new());
+    map.insert(MDStyle::TableCell.into(), Style::new());
+
+    map.insert(MDStyle::Emphasis.into(), Style::new().italic());
+    map.insert(MDStyle::Strong.into(), Style::new().bold());
+    map.insert(MDStyle::Strikethrough.into(), Style::new().crossed_out());
+
+    map.insert(MDStyle::CodeInline.into(), sty(sc.redpink[1]));
+    map.insert(MDStyle::MathInline.into(), sty(sc.redpink[1]));
+    map.insert(MDStyle::MetadataBlock.into(), sty(sc.orange[1]));
+
+    map
 }
 
 impl HasFocus for MDFileState {
@@ -214,6 +223,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                     TextOutcome::TextChanged => {
                         self.update_cursor_pos(ctx);
                         self.text_changed(ctx)
+                    }
+                    TextOutcome::Changed => {
+                        self.update_cursor_pos(ctx);
+                        Control::Changed
                     }
                     r => r.into(),
                 };
