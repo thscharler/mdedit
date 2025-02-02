@@ -1,3 +1,7 @@
+# 0.5.6
+
+* fix: published the wron cargo.toml
+
 # 0.5.5
 
 * feature: start with different doc-types.
