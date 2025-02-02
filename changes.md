@@ -1,3 +1,13 @@
+# 0.5.5
+
+* feature: start with different doc-types.
+    - md - markdown support enabled
+    - txt - plain text editing
+    - future: \[rs\] - edit markdown in .rs comments
+* fix: startup focus
+* fix: use new TextArea::text_style_map()
+* fix: cursor position didn't update on moves
+
 # 0.5.4
 
 * feature: add Black&White theme
