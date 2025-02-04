@@ -1,6 +1,10 @@
+# 0.5.7
+
+* fix: use of deprecated
+
 # 0.5.6
 
-* fix: published the wron cargo.toml
+* fix: published the wrong cargo.toml
 
 # 0.5.5
 
