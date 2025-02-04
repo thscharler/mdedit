@@ -176,7 +176,7 @@ impl MDEditState {
         };
 
         let mut r = self._open(pos, path, ctx)?;
-        r = r.and_try(|| self._sync_files(path, ctx))?;
+        r = r.and_then_try(|| self._sync_files(path, ctx))?;
 
         Ok(r)
     }
@@ -193,7 +193,7 @@ impl MDEditState {
             (0, 0)
         };
         let mut r = self._open(pos, path, ctx)?;
-        r = r.and_try(|| self._sync_files(path, ctx))?;
+        r = r.and_then_try(|| self._sync_files(path, ctx))?;
         Ok(r)
     }
 

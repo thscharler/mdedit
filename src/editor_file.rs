@@ -301,7 +301,7 @@ impl MDFileState {
             .doc_type
             .format(&mut self.edit, ctx.g.cfg.text_width, eq_width)
             .into();
-        r = r.and(|| {
+        r = r.and_then(|| {
             self.update_cursor_pos(ctx);
             self.text_changed(ctx)
         });
