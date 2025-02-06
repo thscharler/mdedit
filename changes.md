@@ -1,3 +1,7 @@
+# 0.6.1
+
+* fix: strange locale in WSL. fallback
+
 # 0.6.0
 
 * fix: running mdedit with a directory failed panicky.
