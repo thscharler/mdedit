@@ -32,9 +32,10 @@ const DEFAULT_TEXT_WIDTH: u16 = 65;
 impl Default for MDConfig {
     fn default() -> Self {
         let loc = get_locale().unwrap_or("en-US".into()).replace('-', "_");
+        let locale = Locale::from_str(&loc).unwrap_or(Locale::POSIX);
 
         MDConfig {
-            loc: Locale::from_str(&loc).expect(format!("locale {}", loc).as_str()),
+            loc: locale,
             theme: "Imperial".to_string(),
             show_ctrl: false,
             file_split_at: DEFAULT_FILE_SPLIT_AT,
