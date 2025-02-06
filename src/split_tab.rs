@@ -59,14 +59,12 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
         let theme = ctx.g.theme.clone();
         let scheme = theme.scheme();
 
-        let (split, split_overlay) = Split::horizontal()
+        let (split, _) = Split::horizontal()
             .constraints(vec![Constraint::Fill(1); state.tabbed.len()])
             .mark_offset(0)
             .split_type(SplitType::Scroll)
             .styles(theme.split_style())
-            .into_widgets();
-
-        split.render(area, buf, &mut state.splitter);
+            .into_widget_layout(area, &mut state.splitter);
 
         let max_idx_split = state.splitter.widget_areas.len().saturating_sub(1);
         for (idx_split, edit_area) in state.splitter.widget_areas.iter().enumerate() {
@@ -120,7 +118,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
             }
         }
 
-        split_overlay.render(area, buf, &mut state.splitter);
+        split.render(area, buf, &mut state.splitter);
 
         Ok(())
     }

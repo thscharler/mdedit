@@ -36,7 +36,6 @@ use std::cmp::max;
 use std::env::args;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::str::from_utf8;
 use std::time::Duration;
 use std::{env, fs, mem};

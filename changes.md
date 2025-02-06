@@ -1,3 +1,9 @@
+# 0.6.0
+
+* fix: running mdedit with a directory failed panicky.
+  now uses this as the base directory and shows it's files.
+* fix: update to new splitter
+
 # 0.5.7
 
 * fix: use of deprecated
