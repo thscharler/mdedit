@@ -34,7 +34,7 @@ impl Default for MDConfig {
         let loc = get_locale().unwrap_or("en-US".into()).replace('-', "_");
 
         MDConfig {
-            loc: Locale::from_str(&loc).expect("locale"),
+            loc: Locale::from_str(&loc).expect(format!("locale {}", loc).as_str()),
             theme: "Imperial".to_string(),
             show_ctrl: false,
             file_split_at: DEFAULT_FILE_SPLIT_AT,
