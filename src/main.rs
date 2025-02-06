@@ -7,9 +7,11 @@ use crate::global::GlobalState;
 use crate::theme::{dark_themes, DarkTheme};
 use anyhow::Error;
 use crossbeam::atomic::AtomicCell;
+use crossbeam::channel::SendError;
 use dirs::cache_dir;
-use log::{error, set_max_level};
+use log::{debug, error, set_max_level, warn};
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
+use rat_salsa::thread_pool::Cancel;
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
 use rat_theme2::schemes::IMPERIAL;
@@ -28,7 +30,8 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::StatefulWidget;
 use ratatui::style::Style;
-use ratatui::widgets::{Block, BorderType, Padding};
+use ratatui::text::{Line, Span, Text};
+use ratatui::widgets::{Block, BorderType, Padding, Widget};
 use std::cmp::max;
 use std::env::args;
 use std::fs::create_dir_all;
@@ -200,11 +203,50 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
         let theme = ctx.g.theme.clone();
         let scheme = theme.scheme();
 
-        let r = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).split(area);
-        let s = Layout::horizontal([Constraint::Percentage(61), Constraint::Percentage(39)])
-            .split(r[1]);
+        let top = if state.menu.is_focused() { 2 } else { 0 };
 
-        MDEdit.render(r[0], buf, &mut state.editor, ctx)?;
+        let r = Layout::vertical([
+            Constraint::Length(top),
+            Constraint::Fill(1),
+            Constraint::Length(1),
+        ])
+        .split(area);
+        let s = Layout::horizontal([
+            Constraint::Percentage(61), //
+            Constraint::Percentage(39),
+        ])
+        .split(r[2]);
+
+        if top > 0 {
+            let top_area = Rect::new(area.x, area.y, area.width, 1);
+            Line::from_iter([
+                Span::from("    "),
+                Span::from("F1").style(theme.select()),
+                Span::from("Help").style(theme.button_base()),
+                Span::from("  "),
+                Span::from("F2").style(theme.select()),
+                Span::from("Cheat").style(theme.button_base()),
+                Span::from("  "),
+                Span::from("F4").style(theme.select()),
+                Span::from("Tree").style(theme.button_base()),
+                Span::from("  "),
+                Span::from("F5").style(theme.select()),
+                Span::from("Files").style(theme.button_base()),
+                Span::from("  "),
+                Span::from("F6").style(theme.select()),
+                Span::from("Hide Files").style(theme.button_base()),
+                Span::from("  "),
+                Span::from("F7").style(theme.select()),
+                Span::from("Format =").style(theme.button_base()),
+                Span::from("  "),
+                Span::from("F8").style(theme.select()),
+                Span::from("Format").style(theme.button_base()),
+                Span::from("  "),
+            ])
+            .render(top_area, buf);
+        }
+
+        MDEdit.render(r[1], buf, &mut state.editor, ctx)?;
 
         let menu_struct = Menu {
             show_ctrl: ctx.g.cfg.show_ctrl,
@@ -231,7 +273,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
         Hover::new().render(Rect::default(), buf, &mut ctx.g.hover);
 
         let l_fd = layout_middle(
-            r[0],
+            r[1],
             Constraint::Length(state.menu.bar.item_areas[0].x),
             Constraint::Percentage(39),
             Constraint::Percentage(39),
@@ -246,7 +288,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
 
         if state.error_dlg.active() {
             let l_msg = layout_middle(
-                r[0],
+                r[1],
                 Constraint::Percentage(19),
                 Constraint::Percentage(19),
                 Constraint::Percentage(19),
@@ -266,7 +308,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
 
         if state.message_dlg.active() {
             let l_msg = layout_middle(
-                r[0],
+                r[1],
                 Constraint::Percentage(4),
                 Constraint::Percentage(4),
                 Constraint::Percentage(4),
@@ -318,22 +360,41 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             .status(0, format!("mdedit {}", env!("CARGO_PKG_VERSION")));
         self.clear_status = ctx.add_timer(TimerDef::new().timer(Duration::from_secs(1)));
 
-        if ctx.g.cfg.load_file.is_empty() {
-            let cwd = env::current_dir()?;
+        fn spawn_load_dir(
+            path: PathBuf,
+            ctx: &mut AppContext<'_>,
+        ) -> Result<Cancel, SendError<()>> {
             let cfg = ctx.g.cfg.globs.clone();
             ctx.spawn(move |_can, _send| {
                 let mut sys = FileSysStructure::new();
-                sys.load(&cwd, &cfg)?;
+                sys.load_filesys(&path)?;
+
+                if sys.is_mdbook {
+                    let src_path = path.join("src");
+                    sys.load_current(&src_path, &cfg)?;
+                } else {
+                    sys.load_current(&path, &cfg)?;
+                }
+
                 Ok(Control::Event(MDEvent::FileSys(
                     Box::new(AtomicCell::new(sys)), //
                 )))
-            })?;
+            })
+        }
+
+        if ctx.g.cfg.load_file.is_empty() {
+            let cwd = env::current_dir()?;
+            spawn_load_dir(cwd, ctx)?;
         } else {
             for load in mem::take(&mut ctx.g.cfg.load_file) {
-                _ = self.editor.open_no_sync(&load, ctx)?;
+                if load.is_dir() {
+                    spawn_load_dir(load, ctx)?;
+                } else {
+                    _ = self.editor.open_no_sync(&load, ctx)?;
+                }
             }
-            _ = self.editor.sync_file_list(ctx)?;
             _ = self.editor.select_tab_at(0, 0, ctx)?;
+            _ = self.editor.sync_file_list(ctx)?;
         }
 
         Ok(())
@@ -610,15 +671,21 @@ impl MDAppState {
 
 fn setup_logging() -> Result<(), Error> {
     if let Some(cache) = cache_dir() {
-        let log_path = cache.join("mdedit");
-        if !log_path.exists() {
-            create_dir_all(&log_path)?;
-        }
+        let log_file = if cfg!(debug_assertions) {
+            PathBuf::from("log.log")
+        } else {
+            let log_path = cache.join("mdedit");
+            if !log_path.exists() {
+                create_dir_all(&log_path)?;
+            }
+            log_path.join("log.log")
+        };
 
-        let log_file = log_path.join("log.log");
         _ = fs::remove_file(&log_file);
         fern::Dispatch::new()
-            .format(|out, message, _record| out.finish(format_args!("{}", message)))
+            .format(|out, message, _record| {
+                out.finish(format_args!("{}", message)) //
+            })
             .level(log::LevelFilter::Debug)
             .chain(fern::log_file(&log_file)?)
             .apply()?;

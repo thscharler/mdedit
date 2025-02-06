@@ -10,6 +10,9 @@ pub struct FileSysStructure {
     pub dirs: Vec<PathBuf>,
     pub display: Vec<String>,
 
+    pub is_cargo: bool,
+    pub is_mdbook: bool,
+
     pub files_dir: PathBuf,
     pub files: Vec<PathBuf>,
 }
@@ -30,6 +33,8 @@ impl FileSysStructure {
             name: Default::default(),
             dirs: Default::default(),
             display: Default::default(),
+            is_cargo: Default::default(),
+            is_mdbook: Default::default(),
             files_dir: Default::default(),
             files: Default::default(),
         }
@@ -62,12 +67,20 @@ impl FileSysStructure {
 
         if let Some(v) = cargo_name(&self.root)? {
             self.name = v;
+            self.is_cargo = true;
+            self.is_mdbook = false;
         } else if let Some(v) = mdbook_name(&self.root)? {
             self.name = v;
+            self.is_cargo = false;
+            self.is_mdbook = true;
         } else if let Some(v) = self.root.file_name() {
             self.name = v.to_string_lossy().to_string();
+            self.is_cargo = false;
+            self.is_mdbook = false;
         } else {
             self.name = ".".to_string();
+            self.is_cargo = false;
+            self.is_mdbook = false;
         }
 
         self.dirs.push(self.root.clone());
