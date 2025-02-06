@@ -275,10 +275,6 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                     Control::Continue
                 }
             }
-            MDEvent::CfgNewline => {
-                self.edit.set_newline(ctx.g.cfg.new_line.as_str());
-                Control::Changed
-            }
             MDEvent::CfgShowCtrl => {
                 self.edit.set_show_ctrl(ctx.g.cfg.show_ctrl);
                 Control::Changed
@@ -354,7 +350,6 @@ impl MDFileState {
                 .as_ref(),
         );
         edit.set_clipboard(Some(CliClipboard::default()));
-        edit.set_newline(ctx.g.cfg.new_line.as_str());
         edit.set_show_ctrl(ctx.g.cfg.show_ctrl);
         edit.set_tab_width(4);
 
@@ -383,7 +378,6 @@ impl MDFileState {
         edit.set_clipboard(Some(CliClipboard::default()));
         let t = fs::read_to_string(&path)?;
         edit.set_text(t.as_str());
-        edit.set_newline(ctx.g.cfg.new_line.as_str());
         edit.set_show_ctrl(ctx.g.cfg.show_ctrl);
         edit.set_tab_width(4);
 

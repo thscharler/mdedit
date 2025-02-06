@@ -1,44 +1,47 @@
 use anyhow::{anyhow, Error};
 use dirs::config_dir;
 use ini::Ini;
+use rat_widget::text::Locale;
 use std::fs::create_dir_all;
 use std::path::PathBuf;
+use std::str::FromStr;
+use sys_locale::get_locale;
 
 #[derive(Debug)]
 pub struct MDConfig {
+    // system
+    pub loc: Locale,
+
+    // ui config
     pub theme: String,
-    pub show_ctrl: bool,
-    pub file_split_at: u16,
     pub text_width: u16,
-    pub new_line: String,
 
+    // startup
     pub load_file: Vec<PathBuf>,
-
     pub globs: Vec<String>,
 
-    pub log: String,
+    // auto/tmp
+    pub file_split_at: u16,
+    pub show_ctrl: bool,
+    pub log_level: String,
 }
-
-#[cfg(windows)]
-const LINE_ENDING: &str = "\r\n";
-
-#[cfg(not(windows))]
-const LINE_ENDING: &str = "\n";
 
 const DEFAULT_FILE_SPLIT_AT: u16 = 15;
 const DEFAULT_TEXT_WIDTH: u16 = 65;
 
 impl Default for MDConfig {
     fn default() -> Self {
+        let loc = get_locale().unwrap_or("en-US".into()).replace('-', "_");
+
         MDConfig {
+            loc: Locale::from_str(&loc).expect("locale"),
             theme: "Imperial".to_string(),
             show_ctrl: false,
             file_split_at: DEFAULT_FILE_SPLIT_AT,
             text_width: DEFAULT_TEXT_WIDTH,
-            new_line: LINE_ENDING.into(),
             load_file: Default::default(),
             globs: vec!["*.md".to_string()],
-            log: "debug".to_string(),
+            log_level: "debug".to_string(),
         }
     }
 }
@@ -90,7 +93,7 @@ impl MDConfig {
                     file_split_at,
                     text_width,
                     globs,
-                    log,
+                    log_level: log,
                     ..Default::default()
                 })
             } else {
@@ -138,7 +141,7 @@ impl MDConfig {
                     })
                     .unwrap_or("*.md".to_string()),
             );
-            ini.set_to(section.clone(), "log".into(), self.log.clone());
+            ini.set_to(section.clone(), "log".into(), self.log_level.clone());
 
             ini.write_to_file(config)?;
 

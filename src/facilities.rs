@@ -58,8 +58,14 @@ impl StatefulWidget for MDFileDialog {
 
 #[derive(Debug, Default)]
 pub struct MDFileDialogState {
-    pub file_dlg: FileDialogState,
-    pub handle: Option<fn(PathBuf) -> Result<Control<MDEvent>, Error>>,
+    file_dlg: FileDialogState,
+    handle: Option<fn(PathBuf) -> Result<Control<MDEvent>, Error>>,
+}
+
+impl MDFileDialogState {
+    pub fn active(&self) -> bool {
+        self.file_dlg.active
+    }
 }
 
 impl Facility<FileDialogState, PathBuf, MDEvent, Error> for MDFileDialogState {

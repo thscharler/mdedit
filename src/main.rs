@@ -1,4 +1,5 @@
 use crate::config::MDConfig;
+use crate::config_dlg::{ConfigDialog, ConfigDialogState};
 use crate::editor::{MDEdit, MDEditState};
 use crate::event::MDEvent;
 use crate::facilities::{Facility, MDFileDialog, MDFileDialogState};
@@ -9,7 +10,7 @@ use anyhow::Error;
 use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::SendError;
 use dirs::cache_dir;
-use log::{debug, error, set_max_level, warn};
+use log::{error, set_max_level};
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::thread_pool::Cancel;
 use rat_salsa::timer::{TimerDef, TimerHandle};
@@ -30,8 +31,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::StatefulWidget;
 use ratatui::style::Style;
-use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, BorderType, Padding, Widget};
+use ratatui::widgets::{Block, BorderType, Padding};
 use std::cmp::max;
 use std::env::args;
 use std::fs::create_dir_all;
@@ -44,6 +44,7 @@ use std::{env, fs, mem};
 type AppContext<'a> = rat_salsa::AppContext<'a, GlobalState, MDEvent, Error>;
 
 mod config;
+mod config_dlg;
 mod doc_type;
 mod editor;
 mod editor_file;
@@ -59,7 +60,7 @@ fn main() -> Result<(), Error> {
     setup_logging()?;
 
     let mut config = MDConfig::load()?;
-    set_max_level(config.log.parse()?);
+    set_max_level(config.log_level.parse()?);
 
     let mut args = args();
     args.next();
@@ -106,7 +107,6 @@ fn main() -> Result<(), Error> {
 #[derive(Debug)]
 struct Menu {
     show_ctrl: bool,
-    use_crlf: bool,
 }
 
 impl<'a> MenuStructure<'a> for Menu {
@@ -114,7 +114,6 @@ impl<'a> MenuStructure<'a> for Menu {
         menu.item_parsed("_File")
             .item_parsed("_Edit")
             .item_parsed("_View")
-            .item_parsed("_Theme")
             .item_parsed("_Quit");
     }
 
@@ -125,6 +124,8 @@ impl<'a> MenuStructure<'a> for Menu {
                 submenu.item_parsed("_Open..|Ctrl-O");
                 submenu.item_parsed("_Save..|Ctrl-S");
                 submenu.item_parsed("Save _as..");
+                submenu.item_parsed("\\___");
+                submenu.item_parsed("_Configure");
             }
             1 => {
                 submenu.item_parsed("Format Item|F8");
@@ -136,21 +137,11 @@ impl<'a> MenuStructure<'a> for Menu {
                 } else {
                     submenu.item_parsed("\u{2610} Control chars");
                 }
-                if self.use_crlf {
-                    submenu.item_parsed("\u{2611} Use CR+LF");
-                } else {
-                    submenu.item_parsed("\u{2610} Use CR+LF");
-                }
                 submenu.separator(Separator::Dotted);
                 submenu.item_parsed("_Split view|Ctrl-W D");
                 submenu.item_parsed("_Jump to Tree|F4");
                 submenu.item_parsed("_Jump to File|F5");
                 submenu.item_parsed("_Hide files|F6");
-            }
-            3 => {
-                for t in dark_themes() {
-                    submenu.item_string(t.name().into());
-                }
             }
             _ => {}
         }
@@ -172,6 +163,7 @@ pub struct MDAppState {
     pub message_dlg: MsgDialogState,
     pub error_dlg: MsgDialogState,
     pub file_dlg: MDFileDialogState,
+    pub cfg_dlg: ConfigDialogState,
 }
 
 impl Default for MDAppState {
@@ -185,6 +177,7 @@ impl Default for MDAppState {
             message_dlg: Default::default(),
             error_dlg: Default::default(),
             file_dlg: Default::default(),
+            cfg_dlg: Default::default(),
         };
         s
     }
@@ -203,11 +196,8 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
         let theme = ctx.g.theme.clone();
         let scheme = theme.scheme();
 
-        let top = if state.menu.is_focused() { 2 } else { 0 };
-
         let r = Layout::vertical([
-            Constraint::Length(top),
-            Constraint::Fill(1),
+            Constraint::Fill(1), //
             Constraint::Length(1),
         ])
         .split(area);
@@ -215,42 +205,12 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
             Constraint::Percentage(61), //
             Constraint::Percentage(39),
         ])
-        .split(r[2]);
+        .split(r[1]);
 
-        if top > 0 {
-            let top_area = Rect::new(area.x, area.y, area.width, 1);
-            Line::from_iter([
-                Span::from("    "),
-                Span::from("F1").style(theme.select()),
-                Span::from("Help").style(theme.button_base()),
-                Span::from("  "),
-                Span::from("F2").style(theme.select()),
-                Span::from("Cheat").style(theme.button_base()),
-                Span::from("  "),
-                Span::from("F4").style(theme.select()),
-                Span::from("Tree").style(theme.button_base()),
-                Span::from("  "),
-                Span::from("F5").style(theme.select()),
-                Span::from("Files").style(theme.button_base()),
-                Span::from("  "),
-                Span::from("F6").style(theme.select()),
-                Span::from("Hide Files").style(theme.button_base()),
-                Span::from("  "),
-                Span::from("F7").style(theme.select()),
-                Span::from("Format =").style(theme.button_base()),
-                Span::from("  "),
-                Span::from("F8").style(theme.select()),
-                Span::from("Format").style(theme.button_base()),
-                Span::from("  "),
-            ])
-            .render(top_area, buf);
-        }
-
-        MDEdit.render(r[1], buf, &mut state.editor, ctx)?;
+        MDEdit.render(r[0], buf, &mut state.editor, ctx)?;
 
         let menu_struct = Menu {
             show_ctrl: ctx.g.cfg.show_ctrl,
-            use_crlf: ctx.g.cfg.new_line == "\r\n",
         };
         let (menu, menu_popup) = Menubar::new(&menu_struct)
             .title("^^°n°^^")
@@ -270,25 +230,39 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
             .styles(vec![theme.status_base(), theme.status_base()]);
         status.render(s[1], buf, &mut state.status);
 
+        // some overlays
         Hover::new().render(Rect::default(), buf, &mut ctx.g.hover);
-
-        let l_fd = layout_middle(
-            r[1],
-            Constraint::Length(state.menu.bar.item_areas[0].x),
-            Constraint::Percentage(39),
-            Constraint::Percentage(39),
-            Constraint::Length(0),
-        );
-        MDFileDialog::new()
-            .style(theme.file_dialog_style())
-            .render(l_fd, buf, &mut state.file_dlg);
-        ctx.set_screen_cursor(state.file_dlg.screen_cursor());
-
         menu_popup.render(s[0], buf, &mut state.menu);
+
+        // dialogs
+        if state.file_dlg.active() {
+            let l_fd = layout_middle(
+                r[0],
+                Constraint::Length(state.menu.bar.item_areas[0].x),
+                Constraint::Percentage(39),
+                Constraint::Percentage(39),
+                Constraint::Length(0),
+            );
+            MDFileDialog::new()
+                .style(theme.file_dialog_style()) //
+                .render(l_fd, buf, &mut state.file_dlg);
+            ctx.set_screen_cursor(state.file_dlg.screen_cursor());
+        }
+
+        if state.cfg_dlg.active() {
+            let l_fd = layout_middle(
+                r[0],
+                Constraint::Percentage(19),
+                Constraint::Percentage(19),
+                Constraint::Percentage(19),
+                Constraint::Percentage(19),
+            );
+            ConfigDialog.render(l_fd, buf, &mut state.cfg_dlg, ctx)?;
+        }
 
         if state.error_dlg.active() {
             let l_msg = layout_middle(
-                r[1],
+                r[0],
                 Constraint::Percentage(19),
                 Constraint::Percentage(19),
                 Constraint::Percentage(19),
@@ -308,7 +282,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
 
         if state.message_dlg.active() {
             let l_msg = layout_middle(
-                r[1],
+                r[0],
                 Constraint::Percentage(4),
                 Constraint::Percentage(4),
                 Constraint::Percentage(4),
@@ -410,6 +384,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 try_flow!(self.error_dlg.handle(event, Dialog));
                 try_flow!(self.message_dlg.handle(event, Dialog));
                 try_flow!(self.file_dlg.handle(mdevent, Dialog)?);
+                try_flow!(self.cfg_dlg.event(mdevent, ctx)?);
 
                 // ^W window commands
                 if self.window_cmd {
@@ -485,7 +460,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             )?,
             MDEvent::StoreConfig => {
                 error!("{:?}", ctx.g.cfg.store());
-                Control::Continue
+                Control::Changed
             }
             MDEvent::TimeOut(t) => {
                 if t.handle == self.clear_status {
@@ -580,6 +555,10 @@ impl MDAppState {
             MenuOutcome::MenuActivated(0, 1) => Control::Event(MDEvent::MenuOpen),
             MenuOutcome::MenuActivated(0, 2) => Control::Event(MDEvent::MenuSave),
             MenuOutcome::MenuActivated(0, 3) => Control::Event(MDEvent::MenuSaveAs),
+            MenuOutcome::MenuActivated(0, 4) => {
+                self.cfg_dlg.show(ctx)?;
+                Control::Changed
+            }
             MenuOutcome::MenuActivated(1, 0) => {
                 if let Some((_, sel)) = self.editor.split_tab.selected_mut() {
                     ctx.focus().focus(sel);
@@ -600,30 +579,11 @@ impl MDAppState {
                 ctx.g.cfg.show_ctrl = !ctx.g.cfg.show_ctrl;
                 Control::Event(MDEvent::CfgShowCtrl)
             }
-            MenuOutcome::MenuActivated(2, 1) => {
-                let changed = if ctx.g.cfg.new_line.as_str() == "\r\n" {
-                    "\n".into()
-                } else {
-                    "\r\n".into()
-                };
-                ctx.g.cfg.new_line = changed;
-                Control::Event(MDEvent::CfgNewline)
-            }
-            MenuOutcome::MenuActivated(2, 2) => Control::Event(MDEvent::Split),
-            MenuOutcome::MenuActivated(2, 3) => Control::Event(MDEvent::JumpToTree),
-            MenuOutcome::MenuActivated(2, 4) => Control::Event(MDEvent::JumpToFiles),
-            MenuOutcome::MenuActivated(2, 5) => Control::Event(MDEvent::HideFiles),
-            MenuOutcome::MenuSelected(3, n) => {
-                ctx.g.theme = Rc::new(dark_themes()[n].clone());
-                Control::Changed
-            }
-            MenuOutcome::MenuActivated(3, n) => {
-                ctx.g.theme = Rc::new(dark_themes()[n].clone());
-                ctx.g.cfg.theme = ctx.g.theme.name().into();
-                ctx.queue(Control::Event(MDEvent::StoreConfig));
-                Control::Changed
-            }
-            MenuOutcome::Activated(4) => Control::Quit,
+            MenuOutcome::MenuActivated(2, 1) => Control::Event(MDEvent::Split),
+            MenuOutcome::MenuActivated(2, 2) => Control::Event(MDEvent::JumpToTree),
+            MenuOutcome::MenuActivated(2, 3) => Control::Event(MDEvent::JumpToFiles),
+            MenuOutcome::MenuActivated(2, 4) => Control::Event(MDEvent::HideFiles),
+            MenuOutcome::Activated(3) => Control::Quit,
             r => r.into(),
         };
 
@@ -641,6 +601,8 @@ impl MDAppState {
                 ctx.queue(Control::Changed);
                 Ok(Control::Continue)
             } else {
+                ctx.focus().focus(&self.editor.file_list.file_list);
+                ctx.queue(Control::Changed);
                 Ok(Control::Continue)
             }
         }

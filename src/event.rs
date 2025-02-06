@@ -19,10 +19,7 @@ pub enum MDEvent {
     MenuFormatEq,
 
     CfgShowCtrl,
-    CfgNewline,
-
     SyncEdit,
-
     New(PathBuf),
     Open(PathBuf),
     SelectOrOpen(PathBuf),

@@ -45,6 +45,7 @@ impl Default for SplitTabState {
     }
 }
 
+#[allow(deprecated)]
 impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
     type State = SplitTabState;
 
