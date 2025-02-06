@@ -40,7 +40,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDEdit {
     ) -> Result<(), Error> {
         let theme = &ctx.g.theme;
 
-        let (split, split_overlay) = Split::horizontal()
+        let (split, split_layout) = Split::horizontal()
             .styles(theme.split_style())
             .mark_offset(1)
             .constraints([
@@ -48,25 +48,12 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDEdit {
                 Constraint::Fill(1),
             ])
             .split_type(SplitType::FullEmpty)
-            .into_widgets();
+            .into_widget_layout(area, &mut state.split_files);
+
+        FileList.render(split_layout[0], buf, &mut state.file_list, ctx)?;
+        SplitTab.render(split_layout[1], buf, &mut state.split_tab, ctx)?;
 
         split.render(area, buf, &mut state.split_files);
-
-        FileList.render(
-            state.split_files.widget_areas[0],
-            buf,
-            &mut state.file_list,
-            ctx,
-        )?;
-
-        SplitTab.render(
-            state.split_files.widget_areas[1],
-            buf,
-            &mut state.split_tab,
-            ctx,
-        )?;
-
-        split_overlay.render(area, buf, &mut state.split_files);
 
         Ok(())
     }
