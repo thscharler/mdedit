@@ -325,6 +325,7 @@ impl HasFocus for MDAppState {
 impl AppState<GlobalState, MDEvent, Error> for MDAppState {
     fn init(&mut self, ctx: &mut AppContext<'_>) -> Result<(), Error> {
         ctx.focus = Some(FocusBuilder::build_for(self));
+        ctx.focus().enable_log();
 
         self.editor.init(ctx)?;
 
@@ -363,7 +364,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 if load.is_dir() {
                     spawn_load_dir(load, ctx)?;
                 } else {
-                    _ = self.editor.open_no_sync(&load, ctx)?;
+                    _ = self.editor.open(&load, ctx)?;
                 }
             }
             _ = self.editor.select_tab_at(0, 0, ctx)?;
@@ -422,9 +423,13 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 r = r.or_else_try(|| self.handle_menu(event, ctx))?;
                 r
             }
+            MDEvent::Immediate(r) => {
+                panic!("found immediate {:?}", r);
+            }
             MDEvent::Rendered => {
                 // rebuild keyboard + mouse focus
                 ctx.focus = Some(FocusBuilder::rebuild_for(self, ctx.focus.take()));
+                ctx.focus().enable_log();
                 Control::Continue
             }
             MDEvent::Status(n, s) => {
@@ -459,7 +464,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             )?,
             MDEvent::StoreConfig => {
                 error!("{:?}", ctx.g.cfg.store());
-                Control::Changed
+                Control::Continue
             }
             MDEvent::TimeOut(t) => {
                 if t.handle == self.clear_status {
@@ -473,13 +478,6 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         };
 
         r = r.or_else_try(|| self.editor.event(mdevent, ctx))?;
-
-        // global auto sync
-        self.editor.auto_hide_files();
-        if self.editor.establish_active_split() {
-            let r = self.editor.sync_file_list(ctx)?;
-            ctx.queue(r);
-        }
 
         Ok(r)
     }

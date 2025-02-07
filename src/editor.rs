@@ -1,11 +1,12 @@
 use crate::editor_file::MDFileState;
-use crate::event::MDEvent;
+use crate::event::{MDEvent, MDImmediate};
 use crate::file_list::{FileList, FileListState};
 use crate::global::GlobalState;
 use crate::split_tab::{SplitTab, SplitTabState};
 use crate::AppContext;
 use crate::FocusFlag;
 use anyhow::Error;
+use log::debug;
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
 use rat_widget::event::{try_flow, ConsumedEvent, HandleEvent, Outcome, Regular};
 use rat_widget::focus::{impl_has_focus, HasFocus};
@@ -73,8 +74,11 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
         event: &MDEvent,
         ctx: &mut rat_salsa::AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<Control<MDEvent>, Error> {
+        let old_selected = self.split_tab.selected_pos();
+
         let mut r = match event {
             MDEvent::Event(event) => {
+                // main split between file-list and editors
                 try_flow!(match self.split_files.handle(event, Regular) {
                     Outcome::Changed => {
                         ctx.g.cfg.file_split_at = self.split_files.area_len(0);
@@ -106,17 +110,36 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
             MDEvent::PrevEditSplit => self.split_tab.select_prev(ctx).into(),
             MDEvent::NextEditSplit => self.split_tab.select_next(ctx).into(),
             MDEvent::HideFiles => self.hide_files(ctx)?,
-            MDEvent::SyncEdit => self.sync_edit(ctx)?,
+            MDEvent::SyncEdit => self.roll_forward_edit(ctx)?,
             MDEvent::FileSys(fs) => {
                 self.file_list.sys = fs.take();
                 self.file_list.init(ctx)?;
-                Control::Event(MDEvent::JumpToFiles)
+                self.jump_to_file(ctx)?
             }
             _ => Control::Continue,
         };
 
         r = r.or_else_try(|| self.file_list.event(event, ctx))?;
-        r = r.or_else_try(|| self.split_tab.event(event, ctx))?;
+        r = r.or_else_try(|| match self.split_tab.event(event, ctx) {
+            Ok(Control::Event(MDEvent::Immediate(MDImmediate::TabClosed))) => {
+                if self.split_tab.sel_split.is_none() {
+                    ctx.focus().focus(&self.file_list.file_list);
+                }
+                Ok(Control::Changed)
+            }
+            r => r,
+        })?;
+
+        // global auto sync
+        self.auto_hide_files();
+        self.split_tab.assert_selection();
+
+        let selected = self.split_tab.selected_pos();
+        if selected != old_selected {
+            debug!("sync filelist {:?} -> {:?}", old_selected, selected);
+            let f = self.sync_file_list(ctx)?;
+            ctx.queue(f);
+        }
 
         Ok(r)
     }
@@ -138,34 +161,9 @@ impl MDEditState {
         let new = MDFileState::new_file(&path, ctx);
         self.split_tab.open(pos, new, ctx);
         self.split_tab.select(pos, ctx);
+        self.split_tab.focus_selected(ctx);
 
         Ok(Control::Changed)
-    }
-
-    // Open path.
-    pub fn open_split(
-        &mut self,
-        path: &Path,
-        ctx: &mut AppContext<'_>,
-    ) -> Result<Control<MDEvent>, Error> {
-        let pos = if let Some(pos) = self.split_tab.selected_pos() {
-            if pos.0 + 1 >= self.split_tab.tabs.len() {
-                (pos.0 + 1, 0)
-            } else {
-                if let Some(sel_tab) = self.split_tab.tabbed[pos.0 + 1].selected() {
-                    (pos.0 + 1, sel_tab + 1)
-                } else {
-                    (pos.0 + 1, 0)
-                }
-            }
-        } else {
-            (0, 0)
-        };
-
-        let mut r = self._open(pos, path, ctx)?;
-        r = r.and_then_try(|| self._sync_files(path, ctx))?;
-
-        Ok(r)
     }
 
     // Open path.
@@ -179,24 +177,31 @@ impl MDEditState {
         } else {
             (0, 0)
         };
-        let mut r = self._open(pos, path, ctx)?;
-        r = r.and_then_try(|| self._sync_files(path, ctx))?;
-        Ok(r)
+
+        self._open(pos, path, ctx)
     }
 
-    // Open path. Don't sync file-list.
-    pub fn open_no_sync(
+    // Open path as new split.
+    fn _open_split(
         &mut self,
         path: &Path,
         ctx: &mut AppContext<'_>,
     ) -> Result<Control<MDEvent>, Error> {
         let pos = if let Some(pos) = self.split_tab.selected_pos() {
-            (pos.0, pos.1 + 1)
+            if pos.0 + 1 >= self.split_tab.split_tab_file.len() {
+                (pos.0 + 1, 0)
+            } else {
+                if let Some(sel_tab) = self.split_tab.split_tab[pos.0 + 1].selected() {
+                    (pos.0 + 1, sel_tab + 1)
+                } else {
+                    (pos.0 + 1, 0)
+                }
+            }
         } else {
             (0, 0)
         };
-        let r = self._open(pos, path, ctx)?;
-        Ok(r)
+
+        self._open(pos, path, ctx)
     }
 
     fn _open(
@@ -216,6 +221,7 @@ impl MDEditState {
         };
         self.split_tab.open(pos, new, ctx);
         self.split_tab.select(pos, ctx);
+        self.split_tab.focus_selected(ctx);
 
         Ok(Control::Changed)
     }
@@ -227,39 +233,29 @@ impl MDEditState {
         } else {
             None
         };
-        let r = if let Some(path) = path {
-            self._sync_files(&path, ctx)?
-        } else {
-            Control::Continue
-        };
 
-        Ok(r)
-    }
-
-    // Sync file-list with the given file.
-    fn _sync_files(
-        &mut self,
-        file: &Path,
-        ctx: &mut AppContext<'_>,
-    ) -> Result<Control<MDEvent>, Error> {
-        if let Some(parent) = file.parent() {
-            if self.file_list.current_dir() != parent {
-                self.file_list.load(parent, &ctx.g.cfg.globs)?;
-                self.file_list.select(file)?;
-                Ok(Control::Changed)
-            } else if self.file_list.current_file() != Some(file) {
-                self.file_list.select(file)?;
-                Ok(Control::Changed)
+        Ok(if let Some(path) = path {
+            if let Some(parent) = path.parent() {
+                if self.file_list.current_dir() != parent {
+                    self.file_list.load(parent, &ctx.g.cfg.globs)?;
+                    self.file_list.select(&path)?;
+                    Control::Changed
+                } else if self.file_list.current_file() != Some(&path) {
+                    self.file_list.select(&path)?;
+                    Control::Changed
+                } else {
+                    Control::Unchanged
+                }
             } else {
-                Ok(Control::Unchanged)
+                Control::Unchanged
             }
         } else {
-            Ok(Control::Unchanged)
-        }
+            Control::Continue
+        })
     }
 
     /// Synchronize all editor instances of one file.
-    pub fn sync_edit(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+    fn roll_forward_edit(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
         // synchronize instances
         let (id_sel, sel_path, replay) = if let Some((id_sel, sel)) = self.split_tab.selected_mut()
         {
@@ -281,6 +277,7 @@ impl MDEditState {
     ) -> Result<Control<MDEvent>, Error> {
         if let Some((pos, _md)) = self.split_tab.for_path(path) {
             self.split_tab.select(pos, ctx);
+            self.split_tab.focus_selected(ctx);
             Ok(Control::Changed)
         } else {
             self.open(path, ctx)
@@ -295,27 +292,16 @@ impl MDEditState {
     ) -> Result<Control<MDEvent>, Error> {
         if let Some((pos, _md)) = self.split_tab.for_path(path) {
             self.split_tab.select(pos, ctx);
+            self.split_tab.focus_selected(ctx);
             Ok(Control::Changed)
         } else {
-            self.open_split(path, ctx)
+            self._open_split(path, ctx)
         }
-    }
-
-    // Establish the currently focus split+tab as the active split.
-    pub fn establish_active_split(&mut self) -> bool {
-        self.split_tab.establish_active_split()
     }
 
     // Save all.
-    pub fn save(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+    pub fn save(&mut self, _ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
         self.split_tab.save()?;
-
-        self.file_list
-            .load(&self.file_list.sys.files_dir.clone(), &ctx.g.cfg.globs)?;
-        if let Some((_, mdfile)) = self.split_tab.selected() {
-            self.file_list.select(&mdfile.path)?;
-        }
-
         Ok(Control::Changed)
     }
 
@@ -327,6 +313,7 @@ impl MDEditState {
         ctx: &mut AppContext<'_>,
     ) -> Result<Control<MDEvent>, Error> {
         self.split_tab.select((idx_split, idx_tab), ctx);
+        self.split_tab.focus_selected(ctx);
         Ok(Control::Changed)
     }
 
@@ -338,6 +325,11 @@ impl MDEditState {
         ctx: &mut AppContext<'_>,
     ) -> Result<Control<MDEvent>, Error> {
         self.split_tab.close((idx_split, idx_tab), ctx)?;
+        if self.split_tab.sel_split.is_none() {
+            ctx.focus().focus(&self.file_list.file_list);
+        } else {
+            self.split_tab.focus_selected(ctx);
+        }
         Ok(Control::Changed)
     }
 
@@ -348,8 +340,10 @@ impl MDEditState {
     ) -> Result<Control<MDEvent>, Error> {
         if let Some(pos) = self.split_tab.selected_pos() {
             self.split_tab.close((pos.0, pos.1), ctx)?;
-            if let Some((idx, _)) = self.split_tab.selected() {
-                self.split_tab.select(idx, ctx);
+            if self.split_tab.sel_split.is_none() {
+                ctx.focus().focus(&self.file_list.file_list);
+            } else {
+                self.split_tab.focus_selected(ctx);
             }
             Ok(Control::Changed)
         } else {
@@ -360,13 +354,13 @@ impl MDEditState {
     // Close all
     pub fn close_all(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
         if let Some(pos) = self.split_tab.selected_pos() {
-            for i in (0..self.split_tab.tabs[pos.0].len()).rev() {
+            for i in (0..self.split_tab.split_tab_file[pos.0].len()).rev() {
                 self.split_tab.close((pos.0, i), ctx)?;
             }
-            if let Some(idx) = self.split_tab.sel_split {
-                self.split_tab.select((idx, 0), ctx);
-            } else {
+            if self.split_tab.sel_split.is_none() {
                 ctx.focus().focus(&self.file_list.file_list);
+            } else {
+                // noop
             }
             Ok(Control::Changed)
         } else {
@@ -384,7 +378,6 @@ impl MDEditState {
         if path.extension().is_none() {
             path.set_extension("md");
         }
-
         if let Some((_pos, t)) = self.split_tab.selected_mut() {
             t.save_as(&path)?;
         }
@@ -460,7 +453,7 @@ impl MDEditState {
     pub fn jump_to_tabs(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
         if let Some((pos, sel)) = self.split_tab.selected() {
             if sel.is_focused() {
-                ctx.focus().focus(&self.split_tab.tabbed[pos.0]);
+                ctx.focus().focus(&self.split_tab.split_tab[pos.0]);
             } else {
                 ctx.focus().focus(sel);
             }
@@ -472,7 +465,7 @@ impl MDEditState {
         &mut self,
         ctx: &mut AppContext<'_>,
     ) -> Result<Control<MDEvent>, Error> {
-        if self.split_tab.splitter.is_focused() {
+        if self.split_tab.split.is_focused() {
             ctx.focus().next();
         } else {
             ctx.focus().focus(&self.split_tab);
@@ -495,23 +488,45 @@ impl MDEditState {
 
     // Split current buffer.
     pub fn split(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
-        let Some((pos, sel)) = self.split_tab.selected_mut() else {
+        let Some((pos, sel)) = self.split_tab.selected() else {
             return Ok(Control::Continue);
         };
 
-        // enable replay and clone the buffer
-        if let Some(undo) = sel.edit.undo_buffer_mut() {
-            undo.enable_replay_log(true);
-        }
-        let new = sel.clone();
+        let new_split = pos.0 + 1;
 
-        let new_pos = if pos.0 + 1 == self.split_tab.tabs.len() {
-            (pos.0 + 1, 0)
+        // already open in next split?
+        let open_as_tab = if new_split < self.split_tab.split_tab_file.len() {
+            self.split_tab.split_tab_file[new_split]
+                .iter()
+                .enumerate()
+                .find(|(_, v)| v.path == sel.path)
         } else {
-            (pos.0 + 1, self.split_tab.tabs[pos.0 + 1].len())
+            None
         };
-        self.split_tab.open(new_pos, new, ctx);
-        self.split_tab.select(pos, ctx);
+
+        if let Some((new_tab, _)) = open_as_tab {
+            self.split_tab.select((new_split, new_tab), ctx);
+            self.split_tab.focus_selected(ctx);
+        } else {
+            let Some((_, sel)) = self.split_tab.selected_mut() else {
+                return Ok(Control::Continue);
+            };
+            // enable replay and clone the buffer
+            if let Some(undo) = sel.edit.undo_buffer_mut() {
+                undo.enable_replay_log(true);
+            }
+            let new = sel.clone();
+
+            let new_tab = if new_split < self.split_tab.split_tab_file.len() {
+                self.split_tab.split_tab_file[new_split].len()
+            } else {
+                0
+            };
+
+            self.split_tab.open((new_split, new_tab), new, ctx);
+            self.split_tab.select((new_split, new_tab), ctx);
+            self.split_tab.focus_selected(ctx);
+        }
 
         Ok(Control::Changed)
     }

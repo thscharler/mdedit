@@ -249,7 +249,8 @@ impl ConfigDialogState {
             })
             .collect();
 
-        Ok(Control::Event(MDEvent::StoreConfig))
+        ctx.queue(Control::Event(MDEvent::StoreConfig));
+        Ok(Control::Changed)
     }
 
     pub fn show(&mut self, ctx: &AppContext<'_>) -> Result<(), Error> {

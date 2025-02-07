@@ -26,12 +26,12 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 #[derive(Debug, Default, Clone)]
 pub struct MDFile {
     // vary start margin of the scrollbar
-    pub start_margin: u16,
+    start_margin: u16,
 }
 
 #[derive(Debug)]
@@ -44,16 +44,37 @@ pub struct MDFileState {
     pub parse_timer: Option<TimerHandle>,
 }
 
+impl MDFile {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn start_margin(mut self, start_margin: u16) -> Self {
+        self.start_margin = start_margin;
+        self
+    }
+}
+
 impl Clone for MDFileState {
     fn clone(&self) -> Self {
-        Self {
+        let mut s = Self {
             path: self.path.clone(),
             changed: self.changed,
-            doc_type: DocTypes::MD,
+            doc_type: self.doc_type,
             edit: self.edit.clone(),
-            linenr: Default::default(),
+            linenr: self.linenr.clone(),
             parse_timer: None,
-        }
+        };
+
+        // todo: cleanup
+        let nnn = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("fine")
+            .as_millis()
+            % 86400;
+        s.edit.focus = FocusFlag::named(format!("{} {}", s.edit.focus.name(), nnn).as_str());
+
+        s
     }
 }
 

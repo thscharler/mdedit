@@ -4,20 +4,17 @@ use crate::global::GlobalState;
 use anyhow::Error;
 use rat_salsa::{AppContext, AppState, AppWidget, Control, RenderContext};
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
-use rat_widget::event::{
-    ct_event, try_flow, ChoiceOutcome, HandleEvent, MenuOutcome, Popup, Regular,
-};
+use rat_widget::event::{ct_event, try_flow, ChoiceOutcome, HandleEvent, Popup, Regular};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::list::selection::RowSelection;
 use rat_widget::list::{List, ListState};
-use rat_widget::menu::{PopupMenu, PopupMenuState};
-use rat_widget::popup::{Placement, PopupConstraint};
+use rat_widget::popup::Placement;
 use rat_widget::scrolled::Scroll;
 use rat_widget::util::revert_style;
 use ratatui::buffer::Buffer;
-use ratatui::layout::{Alignment, Constraint, Layout, Position, Rect};
+use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, StatefulWidget, StatefulWidgetRef, Widget};
+use ratatui::widgets::{StatefulWidget, StatefulWidgetRef, Widget};
 use std::cmp::min;
 use std::path::{Path, PathBuf};
 
@@ -32,9 +29,6 @@ pub struct FileListState {
 
     pub f_sys: ChoiceState<PathBuf>,
     pub file_list: ListState<RowSelection>,
-
-    pub popup_rect: Rect,
-    pub popup: PopupMenuState,
 }
 
 impl Default for FileListState {
@@ -44,8 +38,6 @@ impl Default for FileListState {
             sys: Default::default(),
             f_sys: Default::default(),
             file_list: ListState::named("file_list"),
-            popup_rect: Default::default(),
-            popup: Default::default(),
         }
     }
 }
@@ -112,7 +104,8 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
             .styles(theme.list_style())
             .render(l_file_list[4], buf, &mut state.file_list);
 
-        if state.file_list.is_focused() && !state.popup.is_active() {
+        // render hover for overlong file names
+        if state.file_list.is_focused() {
             if let Some(selected) = state.file_list.selected() {
                 let idx = selected - state.file_list.offset();
 
@@ -139,21 +132,6 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
         }
 
         choice_popup.render(l_file_list[2], buf, &mut state.f_sys);
-
-        if state.popup.is_active() {
-            PopupMenu::new()
-                .block(Block::bordered())
-                .constraint(PopupConstraint::AboveOrBelow(
-                    Alignment::Left,
-                    state.popup_rect,
-                ))
-                .boundary(state.file_list.area)
-                .item_parsed("_New")
-                .item_parsed("_Open")
-                .item_parsed("_Delete")
-                .styles(theme.menu_style())
-                .render(Rect::default(), buf, &mut state.popup);
-        }
 
         Ok(())
     }
@@ -195,36 +173,6 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
     ) -> Result<Control<MDEvent>, Error> {
         match event {
             MDEvent::Event(event) => {
-                try_flow!(match self.popup.handle(event, Popup) {
-                    MenuOutcome::Activated(0) => {
-                        Control::Event(MDEvent::MenuNew)
-                    }
-                    MenuOutcome::Activated(1) => {
-                        if let Some(pos) = self
-                            .file_list
-                            .row_at_clicked((self.popup_rect.x, self.popup_rect.y))
-                        {
-                            Control::Event(MDEvent::Open(self.sys.files[pos].clone()))
-                        } else {
-                            Control::Changed
-                        }
-                    }
-                    MenuOutcome::Activated(2) => {
-                        Control::Event(MDEvent::Message("buh".into()))
-                    }
-                    MenuOutcome::Hide => {
-                        self.popup.set_active(false);
-                        ctx.queue(Control::Changed);
-                        Control::Continue
-                    }
-                    r => r.into(),
-                });
-
-                if !self.f_sys.is_focused() {
-                    // TODO: why is this necessary??
-                    self.f_sys.set_popup_active(false);
-                }
-
                 try_flow!(match self.f_sys.handle(event, Popup) {
                     ChoiceOutcome::Value => {
                         let sel_path = self.f_sys.value();
@@ -256,16 +204,6 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
                     });
                 }
                 try_flow!(match event {
-                    ct_event!(mouse down Right for x,y)
-                        if self.file_list.area.contains(Position::new(*x, *y)) =>
-                    {
-                        if let Some(row) = self.file_list.row_at_clicked((*x, *y)) {
-                            let row = row - self.file_list.offset();
-                            self.popup_rect = self.file_list.row_areas[row];
-                            self.popup.set_active(true);
-                        }
-                        Control::Changed
-                    }
                     ct_event!(mouse any for m)
                         if self.file_list.mouse.doubleclick(self.file_list.area, m) =>
                     {

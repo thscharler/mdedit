@@ -1,5 +1,5 @@
 use crate::editor_file::{MDFile, MDFileState};
-use crate::event::MDEvent;
+use crate::event::{MDEvent, MDImmediate};
 use crate::global::GlobalState;
 use crate::AppContext;
 use anyhow::Error;
@@ -13,7 +13,7 @@ use rat_widget::tabbed::{TabType, Tabbed, TabbedState};
 use rat_widget::text::undo_buffer::UndoEntry;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Rect};
-use ratatui::symbols;
+use ratatui::style::{Style, Stylize};
 use ratatui::text::Line;
 use ratatui::widgets::StatefulWidget;
 use std::path::Path;
@@ -25,22 +25,24 @@ pub struct SplitTab;
 #[derive(Debug)]
 pub struct SplitTabState {
     pub container: FocusFlag,
-    pub splitter: SplitState,
+
     pub sel_split: Option<usize>,
     pub sel_tab: Option<usize>,
-    pub tabbed: Vec<TabbedState>,
-    pub tabs: Vec<Vec<MDFileState>>,
+
+    pub split: SplitState,
+    pub split_tab: Vec<TabbedState>,
+    pub split_tab_file: Vec<Vec<MDFileState>>,
 }
 
 impl Default for SplitTabState {
     fn default() -> Self {
         Self {
             container: FocusFlag::named("split_tab"),
-            splitter: SplitState::named("splitter"),
-            sel_split: None,
-            sel_tab: None,
-            tabbed: vec![],
-            tabs: vec![],
+            sel_split: Default::default(),
+            sel_tab: Default::default(),
+            split: SplitState::named("splitter"),
+            split_tab: Default::default(),
+            split_tab_file: Default::default(),
         }
     }
 }
@@ -59,18 +61,22 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
         let theme = ctx.g.theme.clone();
         let scheme = theme.scheme();
 
-        let (split, _) = Split::horizontal()
-            .constraints(vec![Constraint::Fill(1); state.tabbed.len()])
+        let (split, split_areas) = Split::horizontal()
+            .constraints(vec![Constraint::Fill(1); state.split_tab.len()])
             .mark_offset(0)
             .split_type(SplitType::Scroll)
             .styles(theme.split_style())
-            .into_widget_layout(area, &mut state.splitter);
+            .into_widget_layout(area, &mut state.split);
 
-        let max_idx_split = state.splitter.widget_areas.len().saturating_sub(1);
-        for (idx_split, edit_area) in state.splitter.widget_areas.iter().enumerate() {
+        if split_areas.is_empty() {
+            buf.set_style(area, theme.textarea_style_doc().style);
+        }
+
+        let max_idx_split = split_areas.len().saturating_sub(1);
+        for (idx_split, edit_area) in split_areas.iter().enumerate() {
             let select_style = if let Some((sel_pos, md)) = state.selected() {
                 if sel_pos.0 == idx_split {
-                    if state.tabbed[idx_split].is_focused() {
+                    if state.split_tab[idx_split].is_focused() {
                         theme.tabbed_style().focus.expect("style")
                     } else if md.is_focused() {
                         scheme.primary(1, Contrast::Normal)
@@ -89,7 +95,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
                 .closeable(true)
                 .styles(theme.tabbed_style())
                 .select_style(select_style)
-                .tabs(state.tabs[idx_split].iter().map(|v| {
+                .tabs(state.split_tab_file[idx_split].iter().map(|v| {
                     let title = format!(
                         "{}{}",
                         v.path.file_name().unwrap_or_default().to_string_lossy(),
@@ -97,28 +103,27 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
                     );
                     Line::from(title)
                 }))
-                .render(*edit_area, buf, &mut state.tabbed[idx_split]);
+                .render(*edit_area, buf, &mut state.split_tab[idx_split]);
 
-            // fix block rendering
-            let fix_area = state.tabbed[idx_split].block_area;
-            if let Some(cell) = buf.cell_mut((fix_area.right() - 1, fix_area.y)) {
-                cell.set_symbol(symbols::line::ROUNDED_TOP_RIGHT);
-            }
-
-            if let Some(idx_tab) = state.tabbed[idx_split].selected() {
-                MDFile {
-                    start_margin: if max_idx_split == idx_split { 0 } else { 1 },
-                }
-                .render(
-                    state.tabbed[idx_split].widget_area,
-                    buf,
-                    &mut state.tabs[idx_split][idx_tab],
-                    ctx,
-                )?;
+            if let Some(idx_tab) = state.split_tab[idx_split].selected() {
+                MDFile::new()
+                    .start_margin(if max_idx_split == idx_split { 0 } else { 1 })
+                    .render(
+                        state.split_tab[idx_split].widget_area,
+                        buf,
+                        &mut state.split_tab_file[idx_split][idx_tab],
+                        ctx,
+                    )?;
+            } else {
+                // should not occur?
+                buf.set_style(
+                    state.split_tab[idx_split].widget_area,
+                    Style::new().on_red(),
+                );
             }
         }
 
-        split.render(area, buf, &mut state.splitter);
+        split.render(area, buf, &mut state.split);
 
         Ok(())
     }
@@ -127,11 +132,11 @@ impl AppWidget<GlobalState, MDEvent, Error> for SplitTab {
 impl HasFocus for SplitTabState {
     fn build(&self, builder: &mut FocusBuilder) {
         let tag = builder.start(self);
-        builder.widget(&self.splitter);
-        for (idx_split, tabbed) in self.tabbed.iter().enumerate() {
-            builder.widget(&self.tabbed[idx_split]);
+        builder.widget(&self.split);
+        for (idx_split, tabbed) in self.split_tab.iter().enumerate() {
+            builder.widget(&self.split_tab[idx_split]);
             if let Some(idx_tab) = tabbed.selected() {
-                builder.widget(&self.tabs[idx_split][idx_tab]);
+                builder.widget(&self.split_tab_file[idx_split][idx_tab]);
             }
         }
         builder.end(tag);
@@ -152,21 +157,49 @@ impl AppState<GlobalState, MDEvent, Error> for SplitTabState {
         event: &MDEvent,
         ctx: &mut rat_salsa::AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<Control<MDEvent>, Error> {
+        // establish focus
+        if ctx.focus().gained_focus().is_some() {
+            let idx = 'sel: {
+                for (idx_split, split) in self.split_tab_file.iter().enumerate() {
+                    for (idx_tab, tab) in split.iter().enumerate() {
+                        if tab.gained_focus() {
+                            break 'sel Some((idx_split, idx_tab));
+                        }
+                    }
+                }
+                None
+            };
+            if let Some((idx_split, idx_tab)) = idx {
+                self.select((idx_split, idx_tab), ctx);
+            }
+        }
+
         let mut r = match event {
             MDEvent::Event(event) => {
-                try_flow!(self.splitter.handle(event, Regular));
-                for (idx_split, tabbed) in self.tabbed.iter_mut().enumerate() {
-                    try_flow!(match tabbed.handle(event, Regular) {
-                        TabbedOutcome::Close(n) => {
-                            Control::Event(MDEvent::CloseAt(idx_split, n))
+                try_flow!(self.split.handle(event, Regular));
+
+                let (idx_split, r) = 'tab: {
+                    for (idx_split, tabbed) in self.split_tab.iter_mut().enumerate() {
+                        let r = tabbed.handle(event, Regular);
+                        if r.is_consumed() {
+                            break 'tab (idx_split, r);
                         }
-                        TabbedOutcome::Select(n) => {
-                            Control::Event(MDEvent::SelectAt(idx_split, n))
-                        }
-                        r => r.into(),
-                    });
+                    }
+                    (0, TabbedOutcome::Continue)
+                };
+                match r {
+                    TabbedOutcome::Close(n) => {
+                        self.close((idx_split, n), ctx)?;
+                        self.focus_selected(ctx);
+                        Control::Event(MDEvent::Immediate(MDImmediate::TabClosed))
+                    }
+                    TabbedOutcome::Select(n) => {
+                        self.select((idx_split, n), ctx);
+                        self.focus_selected(ctx);
+                        Control::Changed
+                    }
+                    r => r.into(),
                 }
-                Control::Continue
             }
             _ => Control::Continue,
         };
@@ -175,15 +208,15 @@ impl AppState<GlobalState, MDEvent, Error> for SplitTabState {
             match event {
                 MDEvent::Event(_) => {
                     // forward only to the selected tab.
-                    for (idx_split, tabbed) in self.tabbed.iter_mut().enumerate() {
+                    for (idx_split, tabbed) in self.split_tab.iter_mut().enumerate() {
                         if let Some(idx_tab) = tabbed.selected() {
-                            try_flow!(self.tabs[idx_split][idx_tab].event(event, ctx)?);
+                            try_flow!(self.split_tab_file[idx_split][idx_tab].event(event, ctx)?);
                         }
                     }
                 }
                 _ => {
                     // application events go everywhere
-                    for tab in &mut self.tabs {
+                    for tab in &mut self.split_tab_file {
                         for ed in tab {
                             try_flow!(ed.event(event, ctx)?);
                         }
@@ -198,118 +231,115 @@ impl AppState<GlobalState, MDEvent, Error> for SplitTabState {
 }
 
 impl SplitTabState {
-    // Establish the active split+tab using the currently focused tab.
-    pub fn establish_active_split(&mut self) -> bool {
+    // Assert that focus and selection are in sync.
+    pub fn assert_selection(&mut self) {
         // Find which split contains the current focus.
-        let old_split = self.sel_split;
-        let old_tab = self.sel_tab;
-
-        for (idx_split, tabbed) in self.tabbed.iter().enumerate() {
+        let mut new_split = self.sel_split;
+        let mut new_tab = self.sel_tab;
+        for (idx_split, tabbed) in self.split_tab.iter().enumerate() {
             if let Some(idx_tab) = tabbed.selected() {
-                if self.tabs[idx_split][idx_tab].is_focused() {
-                    self.sel_split = Some(idx_split);
-                    self.sel_tab = Some(idx_tab);
+                if self.split_tab_file[idx_split][idx_tab].is_focused() {
+                    new_split = Some(idx_split);
+                    new_tab = Some(idx_tab);
                     break;
                 }
             }
         }
 
-        old_split != self.sel_split || old_tab != self.sel_tab
+        assert!(self.sel_split == new_split && self.sel_tab == new_tab);
     }
 
     // Add file at position (split-idx, tab-idx).
-    pub fn open(&mut self, pos: (usize, usize), new: MDFileState, ctx: &mut AppContext<'_>) {
-        if pos.0 == self.tabs.len() {
-            self.tabs.push(Vec::new());
-            self.tabbed
+    pub fn open(&mut self, pos: (usize, usize), new: MDFileState, _ctx: &mut AppContext<'_>) {
+        if pos.0 == self.split_tab_file.len() {
+            self.split_tab_file.push(Vec::new());
+            self.split_tab
                 .push(TabbedState::named(format!("tabbed-{}", pos.0).as_str()));
         }
-        if let Some(sel_tab) = self.tabbed[pos.0].selected() {
+        if let Some(sel_tab) = self.split_tab[pos.0].selected() {
             if sel_tab >= pos.1 {
-                self.tabbed[pos.0].select(Some(sel_tab + 1));
+                self.split_tab[pos.0].select(Some(sel_tab + 1));
             }
         } else {
-            self.tabbed[pos.0].select(Some(0));
+            self.split_tab[pos.0].select(Some(0));
         }
-        self.tabs[pos.0].insert(pos.1, new);
-
-        ctx.focus_mut().update_container(self);
+        self.split_tab_file[pos.0].insert(pos.1, new);
     }
 
     // Close tab (split-idx, tab-idx).
-    pub fn close(&mut self, pos: (usize, usize), ctx: &mut AppContext<'_>) -> Result<(), Error> {
-        if pos.0 < self.tabs.len() {
-            if pos.1 < self.tabs[pos.0].len() {
-                self.tabs[pos.0][pos.1].save()?;
+    pub fn close(&mut self, pos: (usize, usize), _ctx: &mut AppContext<'_>) -> Result<(), Error> {
+        if pos.0 < self.split_tab_file.len() {
+            if pos.1 < self.split_tab_file[pos.0].len() {
+                self.split_tab_file[pos.0][pos.1].save()?;
 
                 // remove tab
-                self.tabs[pos.0].remove(pos.1);
-                if let Some(sel_tab) = self.tabbed[pos.0].selected() {
+                self.split_tab_file[pos.0].remove(pos.1);
+
+                if let Some(sel_tab) = self.split_tab[pos.0].selected() {
                     let new_tab = if sel_tab >= pos.1 {
-                        if sel_tab > 0 {
-                            Some(sel_tab - 1)
-                        } else if self.tabs[pos.0].len() > 0 {
-                            Some(0)
+                        if sel_tab < self.split_tab_file[pos.0].len() {
+                            Some(sel_tab)
+                        } else if self.split_tab_file[pos.0].len() > 0 {
+                            Some(self.split_tab_file[pos.0].len() - 1)
                         } else {
                             None
                         }
                     } else {
-                        if sel_tab == 0 {
-                            if self.tabs[pos.0].len() > 0 {
-                                Some(0)
-                            } else {
-                                None
-                            }
-                        } else {
-                            Some(sel_tab)
-                        }
+                        Some(sel_tab)
                     };
-                    self.tabbed[pos.0].select(new_tab);
+                    self.sel_tab = new_tab;
+                    self.split_tab[pos.0].select(new_tab);
                 }
 
                 // maybe remove split
-                if self.tabs[pos.0].len() == 0 {
-                    self.tabs.remove(pos.0);
-                    self.tabbed.remove(pos.0);
+                if self.split_tab_file[pos.0].len() == 0 {
+                    self.split_tab_file.remove(pos.0);
+                    self.split_tab.remove(pos.0);
+
                     if let Some(sel_split) = self.sel_split {
                         let new_split = if sel_split >= pos.0 {
-                            if sel_split > 0 {
-                                Some(sel_split - 1)
-                            } else if self.tabbed.len() > 0 {
-                                Some(0)
+                            if sel_split < self.split_tab_file.len() {
+                                Some(sel_split)
+                            } else if self.split_tab_file.len() > 0 {
+                                Some(self.split_tab_file.len() - 1)
                             } else {
                                 None
                             }
                         } else {
-                            if sel_split == 0 {
-                                if self.tabbed.len() > 0 {
-                                    Some(0)
-                                } else {
-                                    None
-                                }
-                            } else {
-                                Some(sel_split)
-                            }
+                            Some(sel_split)
                         };
+
                         self.sel_split = new_split;
+                        if new_split.is_some() {
+                            self.sel_tab = Some(0);
+                            self.split_tab[pos.0].select(Some(0));
+                        } else {
+                            self.sel_tab = None;
+                        }
                     }
                 }
-
-                ctx.focus_mut().update_container(self);
             }
         }
         Ok(())
     }
 
     // Select by (split-idx, tab-idx)
-    pub fn select(&mut self, pos: (usize, usize), ctx: &mut AppContext<'_>) {
-        if pos.0 < self.tabs.len() {
-            if pos.1 < self.tabs[pos.0].len() {
+    pub fn select(&mut self, pos: (usize, usize), _ctx: &mut AppContext<'_>) {
+        if pos.0 < self.split_tab_file.len() {
+            if pos.1 < self.split_tab_file[pos.0].len() {
                 self.sel_split = Some(pos.0);
-                self.tabbed[pos.0].select(Some(pos.1));
+                self.sel_tab = Some(pos.1);
+                self.split_tab[pos.0].select(Some(pos.1));
+            }
+        }
+    }
 
+    // Rebuild focus and focus selected
+    pub fn focus_selected(&mut self, ctx: &mut AppContext<'_>) {
+        if let Some(idx_split) = self.sel_split {
+            if let Some(idx_tab) = self.sel_tab {
                 ctx.focus_mut().update_container(self);
-                ctx.focus().focus(&self.tabs[pos.0][pos.1]);
+                ctx.focus().focus(&self.split_tab_file[idx_split][idx_tab]);
             }
         }
     }
@@ -317,10 +347,11 @@ impl SplitTabState {
     // Select next split
     pub fn select_next(&mut self, ctx: &mut AppContext<'_>) -> bool {
         if let Some(idx_split) = self.sel_split {
-            if idx_split + 1 < self.tabs.len() {
+            if idx_split + 1 < self.split_tab_file.len() {
                 let new_split = idx_split + 1;
-                let new_tab = self.tabbed[new_split].selected().unwrap_or_default();
+                let new_tab = self.split_tab[new_split].selected().unwrap_or_default();
                 self.select((new_split, new_tab), ctx);
+                self.focus_selected(ctx);
                 return true;
             }
         }
@@ -332,8 +363,9 @@ impl SplitTabState {
         if let Some(idx_split) = self.sel_split {
             if idx_split > 0 {
                 let new_split = idx_split - 1;
-                let new_tab = self.tabbed[new_split].selected().unwrap_or_default();
+                let new_tab = self.split_tab[new_split].selected().unwrap_or_default();
                 self.select((new_split, new_tab), ctx);
+                self.focus_selected(ctx);
                 return true;
             }
         }
@@ -343,7 +375,7 @@ impl SplitTabState {
     // Position of the current focus.
     pub fn selected_pos(&self) -> Option<(usize, usize)> {
         if let Some(idx_split) = self.sel_split {
-            if let Some(idx_tab) = self.tabbed[idx_split].selected() {
+            if let Some(idx_tab) = self.split_tab[idx_split].selected() {
                 return Some((idx_split, idx_tab));
             }
         }
@@ -353,8 +385,11 @@ impl SplitTabState {
     // Last known focus and position.
     pub fn selected(&self) -> Option<((usize, usize), &MDFileState)> {
         if let Some(idx_split) = self.sel_split {
-            if let Some(idx_tab) = self.tabbed[idx_split].selected() {
-                return Some(((idx_split, idx_tab), &self.tabs[idx_split][idx_tab]));
+            if let Some(idx_tab) = self.split_tab[idx_split].selected() {
+                return Some((
+                    (idx_split, idx_tab),
+                    &self.split_tab_file[idx_split][idx_tab],
+                ));
             }
         }
         None
@@ -363,8 +398,11 @@ impl SplitTabState {
     // Last known focus and position.
     pub fn selected_mut(&mut self) -> Option<((usize, usize), &mut MDFileState)> {
         if let Some(idx_split) = self.sel_split {
-            if let Some(idx_tab) = self.tabbed[idx_split].selected() {
-                return Some(((idx_split, idx_tab), &mut self.tabs[idx_split][idx_tab]));
+            if let Some(idx_tab) = self.split_tab[idx_split].selected() {
+                return Some((
+                    (idx_split, idx_tab),
+                    &mut self.split_tab_file[idx_split][idx_tab],
+                ));
             }
         }
         None
@@ -372,7 +410,7 @@ impl SplitTabState {
 
     // Find the editor for the path.
     pub fn for_path(&self, path: &Path) -> Option<((usize, usize), &MDFileState)> {
-        for (idx_split, tabs) in self.tabs.iter().enumerate() {
+        for (idx_split, tabs) in self.split_tab_file.iter().enumerate() {
             for (idx_tab, tab) in tabs.iter().enumerate() {
                 if tab.path == path {
                     return Some(((idx_split, idx_tab), tab));
@@ -384,7 +422,7 @@ impl SplitTabState {
 
     // Find the editor for the path.
     pub fn for_path_mut(&mut self, path: &Path) -> Option<((usize, usize), &mut MDFileState)> {
-        for (idx_split, tabs) in self.tabs.iter_mut().enumerate() {
+        for (idx_split, tabs) in self.split_tab_file.iter_mut().enumerate() {
             for (idx_tab, tab) in tabs.iter_mut().enumerate() {
                 if tab.path == path {
                     return Some(((idx_split, idx_tab), tab));
@@ -396,7 +434,7 @@ impl SplitTabState {
 
     // Save all files.
     pub fn save(&mut self) -> Result<(), Error> {
-        for (_idx_split, tabs) in self.tabs.iter_mut().enumerate() {
+        for (_idx_split, tabs) in self.split_tab_file.iter_mut().enumerate() {
             for (_idx_tab, tab) in tabs.iter_mut().enumerate() {
                 tab.save()?
             }
@@ -412,7 +450,7 @@ impl SplitTabState {
         replay: &[UndoEntry],
         ctx: &mut AppContext<'_>,
     ) {
-        for (idx_split, tabs) in self.tabs.iter_mut().enumerate() {
+        for (idx_split, tabs) in self.split_tab_file.iter_mut().enumerate() {
             for (idx_tab, tab) in tabs.iter_mut().enumerate() {
                 if id != (idx_split, idx_tab) && tab.path == path {
                     tab.edit.replay_log(replay);

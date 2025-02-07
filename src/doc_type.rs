@@ -16,7 +16,7 @@ pub trait DocType {
     fn log_parser(&self, txt: &TextAreaState);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DocTypes {
     MD,
     TXT,
