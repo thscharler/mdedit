@@ -1,12 +1,12 @@
 use crate::editor_file::MDFileState;
 use crate::event::{MDEvent, MDImmediate};
 use crate::file_list::{FileList, FileListState};
+use crate::fs_structure::FileSysStructure;
 use crate::global::GlobalState;
 use crate::split_tab::{SplitTab, SplitTabState};
 use crate::AppContext;
 use crate::FocusFlag;
 use anyhow::Error;
-use log::debug;
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
 use rat_widget::event::{try_flow, ConsumedEvent, HandleEvent, Outcome, Regular};
 use rat_widget::focus::{impl_has_focus, HasFocus};
@@ -75,6 +75,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
         ctx: &mut rat_salsa::AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<Control<MDEvent>, Error> {
         let old_selected = self.split_tab.selected_pos();
+        let mut must_sync = false;
 
         let mut r = match event {
             MDEvent::Event(event) => {
@@ -93,7 +94,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
             MDEvent::SelectOrOpen(p) => self.select_or_open(p, ctx)?,
             MDEvent::SelectOrOpenSplit(p) => self.select_or_open_split(p, ctx)?,
             MDEvent::Open(p) => self.open(p, ctx)?,
-            MDEvent::Save => self.save(ctx)?,
+            MDEvent::Save => {
+                must_sync = true;
+                self.save(ctx)?
+            }
             MDEvent::SaveAs(p) => self.save_as(p, ctx)?,
             MDEvent::Close => self.close_selected_tab(ctx)?,
             MDEvent::CloseAll => self.close_all(ctx)?,
@@ -112,7 +116,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
             MDEvent::HideFiles => self.hide_files(ctx)?,
             MDEvent::SyncEdit => self.roll_forward_edit(ctx)?,
             MDEvent::FileSys(fs) => {
-                self.file_list.sys = fs.take();
+                self.file_list.replace_fs(fs.take());
                 self.file_list.init(ctx)?;
                 self.jump_to_file(ctx)?
             }
@@ -123,7 +127,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
         r = r.or_else_try(|| match self.split_tab.event(event, ctx) {
             Ok(Control::Event(MDEvent::Immediate(MDImmediate::TabClosed))) => {
                 if self.split_tab.sel_split.is_none() {
-                    ctx.focus().focus(&self.file_list.file_list);
+                    self.file_list.focus_files(ctx);
                 }
                 Ok(Control::Changed)
             }
@@ -136,8 +140,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
 
         let selected = self.split_tab.selected_pos();
         if selected != old_selected {
-            debug!("sync filelist {:?} -> {:?}", old_selected, selected);
-            let f = self.sync_file_list(ctx)?;
+            let f = self.sync_file_list(must_sync, ctx)?;
             ctx.queue(f);
         }
 
@@ -227,7 +230,11 @@ impl MDEditState {
     }
 
     // Sync views.
-    pub fn sync_file_list(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+    pub fn sync_file_list(
+        &mut self,
+        refresh: bool,
+        ctx: &mut AppContext<'_>,
+    ) -> Result<Control<MDEvent>, Error> {
         let path = if let Some((_, md)) = self.split_tab.selected() {
             Some(md.path.clone())
         } else {
@@ -236,8 +243,15 @@ impl MDEditState {
 
         Ok(if let Some(path) = path {
             if let Some(parent) = path.parent() {
-                if self.file_list.current_dir() != parent {
+                let root = FileSysStructure::find_root(parent);
+                let root = root.as_deref();
+
+                if Some(self.file_list.root()) != root {
                     self.file_list.load(parent, &ctx.g.cfg.globs)?;
+                    self.file_list.select(&path)?;
+                    Control::Changed
+                } else if self.file_list.current_dir() != parent || refresh {
+                    self.file_list.load_current(parent, &ctx.g.cfg.globs)?;
                     self.file_list.select(&path)?;
                     Control::Changed
                 } else if self.file_list.current_file() != Some(&path) {
@@ -326,7 +340,7 @@ impl MDEditState {
     ) -> Result<Control<MDEvent>, Error> {
         self.split_tab.close((idx_split, idx_tab), ctx)?;
         if self.split_tab.sel_split.is_none() {
-            ctx.focus().focus(&self.file_list.file_list);
+            self.file_list.focus_files(ctx);
         } else {
             self.split_tab.focus_selected(ctx);
         }
@@ -341,7 +355,7 @@ impl MDEditState {
         if let Some(pos) = self.split_tab.selected_pos() {
             self.split_tab.close((pos.0, pos.1), ctx)?;
             if self.split_tab.sel_split.is_none() {
-                ctx.focus().focus(&self.file_list.file_list);
+                self.file_list.focus_files(ctx);
             } else {
                 self.split_tab.focus_selected(ctx);
             }
@@ -358,7 +372,7 @@ impl MDEditState {
                 self.split_tab.close((pos.0, i), ctx)?;
             }
             if self.split_tab.sel_split.is_none() {
-                ctx.focus().focus(&self.file_list.file_list);
+                self.file_list.focus_files(ctx);
             } else {
                 // noop
             }
@@ -408,46 +422,36 @@ impl MDEditState {
 
     // Select tree
     pub fn jump_to_tree(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
-        let mut r = Control::Continue;
-
-        if self.split_files.is_hidden(0) {
-            self.split_files.show_split(0);
-            r = Control::Changed;
-        }
-        if !self.file_list.f_sys.is_focused() {
-            self.file_list.f_sys.set_popup_active(true);
-            ctx.focus().focus(&self.file_list.f_sys);
-            r = Control::Changed;
-        } else {
-            self.file_list.f_sys.set_popup_active(false);
+        if !self.file_list.focus_tree(ctx) {
             if let Some((_, last_edit)) = self.split_tab.selected() {
                 ctx.focus().focus(last_edit);
-                r = Control::Changed;
+                Ok(Control::Changed)
+            } else {
+                Ok(Control::Continue)
             }
+        } else {
+            if self.split_files.is_hidden(0) {
+                self.split_files.show_split(0);
+            }
+            Ok(Control::Changed)
         }
-
-        Ok(r)
     }
 
     // Select Files
     pub fn jump_to_file(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
-        let mut r = Control::Continue;
-
-        if self.split_files.is_hidden(0) {
-            self.split_files.show_split(0);
-            r = Control::Changed;
-        }
-        if !self.file_list.file_list.is_focused() {
-            ctx.focus().focus(&self.file_list.file_list);
-            r = Control::Changed;
-        } else {
+        if !self.file_list.focus_files(ctx) {
             if let Some((_, last_edit)) = self.split_tab.selected() {
                 ctx.focus().focus(last_edit);
-                r = Control::Changed;
+                Ok(Control::Changed)
+            } else {
+                Ok(Control::Continue)
             }
+        } else {
+            if self.split_files.is_hidden(0) {
+                self.split_files.show_split(0);
+            }
+            Ok(Control::Changed)
         }
-
-        Ok(r)
     }
 
     pub fn jump_to_tabs(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {

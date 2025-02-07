@@ -3,18 +3,21 @@ use log::debug;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Logic for the file-view.
+///
+/// Contains both the file-system tree and the current files.
 #[derive(Debug, Default)]
 pub struct FileSysStructure {
-    pub root: PathBuf,
-    pub name: String,
-    pub dirs: Vec<PathBuf>,
-    pub display: Vec<String>,
+    root: PathBuf,
+    name: String,
+    dirs: Vec<PathBuf>,
+    display: Vec<String>,
 
-    pub is_cargo: bool,
-    pub is_mdbook: bool,
+    is_cargo: bool,
+    is_mdbook: bool,
 
-    pub files_dir: PathBuf,
-    pub files: Vec<PathBuf>,
+    files_dir: PathBuf,
+    files: Vec<PathBuf>,
 }
 
 // only needed for MDEvent ...
@@ -40,6 +43,80 @@ impl FileSysStructure {
         }
     }
 
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn is_mdbook(&self) -> bool {
+        self.is_mdbook
+    }
+
+    pub fn is_cargo(&self) -> bool {
+        self.is_cargo
+    }
+
+    pub fn dirs(&self) -> &[PathBuf] {
+        &self.dirs
+    }
+
+    pub fn dirs_len(&self) -> usize {
+        self.dirs.len()
+    }
+
+    pub fn display(&self) -> &[String] {
+        &self.display
+    }
+
+    pub fn files_dir(&self) -> &Path {
+        &self.files_dir
+    }
+
+    pub fn files(&self) -> &[PathBuf] {
+        &self.files
+    }
+
+    pub fn file(&self, n: usize) -> &Path {
+        &self.files[n]
+    }
+
+    pub fn files_len(&self) -> usize {
+        self.files.len()
+    }
+
+    pub fn files_is_empty(&self) -> bool {
+        self.files.is_empty()
+    }
+
+    /// Find the correct root for the given directory.
+    /// Looks up for the first Cargo.toml or book.toml.
+    /// Returns the path otherwise, if there is one.
+    pub fn find_root(path: &Path) -> Option<PathBuf> {
+        let mut path = path.to_path_buf();
+
+        loop {
+            let cargo_toml = path.join("Cargo.toml");
+            if cargo_toml.exists() {
+                return Some(path);
+            }
+            let book_toml = path.join("book.toml");
+            if book_toml.exists() {
+                return Some(path);
+            }
+
+            if let Some(v) = path.parent() {
+                path = v.to_path_buf();
+            } else {
+                return None;
+            }
+        }
+    }
+
+    /// Load the tree + current files.
+    /// Limits the file list with globs.
     pub fn load(&mut self, path: &Path, globs: &[String]) -> Result<(), Error> {
         debug!("** load {:?} {:?}", path, globs);
         self.load_current(path, globs)?;
@@ -47,8 +124,10 @@ impl FileSysStructure {
         Ok(())
     }
 
+    /// Loads only the file-system for the given path.
+    /// Does the root finding though.
     pub fn load_filesys(&mut self, path: &Path) -> Result<(), Error> {
-        let new_root = if let Some(v) = find_root(path) {
+        let new_root = if let Some(v) = Self::find_root(path) {
             v
         } else {
             path.to_path_buf()
@@ -87,11 +166,12 @@ impl FileSysStructure {
         self.display.push(self.name.clone());
 
         // fs_recurse(&self.root, "", &mut self.dirs, &mut self.display)?;
-        fs_recurse3(&self.root, "", &mut self.dirs, &mut self.display)?;
+        fs_recurse(&self.root, "", &mut self.dirs, &mut self.display)?;
 
         Ok(())
     }
 
+    /// Load the current directory listing.
     pub fn load_current(&mut self, path: &Path, globs: &[String]) -> Result<(), Error> {
         debug!("load current {:?} {:?}", path, globs);
 
@@ -122,6 +202,7 @@ impl FileSysStructure {
     }
 }
 
+/// extract the name from the mdbook.toml
 fn mdbook_name(mdbook_dir: &Path) -> Result<Option<String>, Error> {
     let mdbook = mdbook_dir.join("book.toml");
 
@@ -146,6 +227,7 @@ fn mdbook_name(mdbook_dir: &Path) -> Result<Option<String>, Error> {
     Ok(None)
 }
 
+/// extract the package name from the cargo.toml
 fn cargo_name(cargo_dir: &Path) -> Result<Option<String>, Error> {
     let cargo = cargo_dir.join("Cargo.toml");
 
@@ -169,7 +251,8 @@ fn cargo_name(cargo_dir: &Path) -> Result<Option<String>, Error> {
     Ok(None)
 }
 
-fn fs_recurse3(
+/// tree builder
+fn fs_recurse(
     dir: &Path,
     _prefix: &str,
     dirs: &mut Vec<PathBuf>,
@@ -273,25 +356,4 @@ fn fs_recurse3(
     }
 
     Ok(())
-}
-
-fn find_root(path: &Path) -> Option<PathBuf> {
-    let mut path = path.to_path_buf();
-
-    loop {
-        let cargo_toml = path.join("Cargo.toml");
-        if cargo_toml.exists() {
-            return Some(path);
-        }
-        let book_toml = path.join("book.toml");
-        if book_toml.exists() {
-            return Some(path);
-        }
-
-        if let Some(v) = path.parent() {
-            path = v.to_path_buf();
-        } else {
-            return None;
-        }
-    }
 }

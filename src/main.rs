@@ -343,7 +343,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 let mut sys = FileSysStructure::new();
                 sys.load_filesys(&path)?;
 
-                if sys.is_mdbook {
+                if sys.is_mdbook() {
                     let src_path = path.join("src");
                     sys.load_current(&src_path, &cfg)?;
                 } else {
@@ -368,7 +368,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 }
             }
             _ = self.editor.select_tab_at(0, 0, ctx)?;
-            _ = self.editor.sync_file_list(ctx)?;
+            _ = self.editor.sync_file_list(true, ctx)?;
         }
 
         Ok(())
@@ -598,7 +598,7 @@ impl MDAppState {
                 ctx.queue(Control::Changed);
                 Ok(Control::Continue)
             } else {
-                ctx.focus().focus(&self.editor.file_list.file_list);
+                self.editor.file_list.focus_files(ctx);
                 ctx.queue(Control::Changed);
                 Ok(Control::Continue)
             }
