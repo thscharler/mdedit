@@ -10,7 +10,7 @@ use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::SendError;
 use dirs::cache_dir;
 use log::{error, set_max_level};
-use rat_dialog::widgets::{FileDialog, FileDialogState};
+use rat_dialog::widgets::{FileDialog, FileDialogState, MsgDialog, MsgDialogState};
 use rat_dialog::DialogStack;
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::thread_pool::Cancel;
@@ -18,13 +18,11 @@ use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
 use rat_theme2::schemes::IMPERIAL;
 use rat_widget::event::{
-    ct_event, try_flow, ConsumedEvent, Dialog, FileOutcome, HandleEvent, MenuOutcome, Popup,
+    ct_event, try_flow, ConsumedEvent, FileOutcome, HandleEvent, MenuOutcome, Popup,
 };
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::hover::Hover;
-use rat_widget::layout::layout_middle;
 use rat_widget::menu::{MenuBuilder, MenuStructure, Menubar, MenubarState, Separator};
-use rat_widget::msgdialog::{MsgDialog, MsgDialogState};
 use rat_widget::popup::Placement;
 use rat_widget::statusline::{StatusLine, StatusLineState};
 use ratatui::buffer::Buffer;
@@ -157,10 +155,6 @@ pub struct MDAppState {
     pub clear_status: TimerHandle,
 
     pub window_cmd: bool,
-
-    pub message_dlg: MsgDialogState,
-    pub error_dlg: MsgDialogState,
-    pub cfg_dlg: ConfigDialogState,
 }
 
 impl Default for MDAppState {
@@ -171,9 +165,6 @@ impl Default for MDAppState {
             status: Default::default(),
             clear_status: Default::default(),
             window_cmd: false,
-            message_dlg: Default::default(),
-            error_dlg: Default::default(),
-            cfg_dlg: Default::default(),
         };
         s
     }
@@ -190,7 +181,6 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
         ctx: &mut RenderContext<'_, GlobalState>,
     ) -> Result<(), Error> {
         let theme = ctx.g.theme.clone();
-        let scheme = theme.scheme();
 
         let r = Layout::vertical([
             Constraint::Fill(1), //
@@ -232,60 +222,49 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
 
         DialogStack.render(r[0], buf, &mut ctx.g.dialogs.clone(), ctx)?;
 
-        if state.cfg_dlg.active() {
-            let l_fd = layout_middle(
-                r[0],
-                Constraint::Percentage(19),
-                Constraint::Percentage(19),
-                Constraint::Percentage(19),
-                Constraint::Percentage(19),
-            );
-            ConfigDialog.render(l_fd, buf, &mut state.cfg_dlg, ctx)?;
-        }
+        // if state.error_dlg.active() {
+        //     let l_msg = layout_middle(
+        //         r[0],
+        //         Constraint::Percentage(19),
+        //         Constraint::Percentage(19),
+        //         Constraint::Percentage(19),
+        //         Constraint::Percentage(19),
+        //     );
+        //     let err = MsgDialog::new()
+        //         .block(
+        //             Block::bordered()
+        //                 .style(theme.dialog_base())
+        //                 .border_type(BorderType::Rounded)
+        //                 .title_style(Style::new().fg(ctx.g.scheme().red[0]))
+        //                 .padding(Padding::new(1, 1, 1, 1)),
+        //         )
+        //         .styles(theme.msg_dialog_style());
+        //     err.render(l_msg, buf, &mut state.error_dlg);
+        // }
 
-        if state.error_dlg.active() {
-            let l_msg = layout_middle(
-                r[0],
-                Constraint::Percentage(19),
-                Constraint::Percentage(19),
-                Constraint::Percentage(19),
-                Constraint::Percentage(19),
-            );
-            let err = MsgDialog::new()
-                .block(
-                    Block::bordered()
-                        .style(theme.dialog_base())
-                        .border_type(BorderType::Rounded)
-                        .title_style(Style::new().fg(ctx.g.scheme().red[0]))
-                        .padding(Padding::new(1, 1, 1, 1)),
-                )
-                .styles(theme.msg_dialog_style());
-            err.render(l_msg, buf, &mut state.error_dlg);
-        }
-
-        if state.message_dlg.active() {
-            let l_msg = layout_middle(
-                r[0],
-                Constraint::Percentage(4),
-                Constraint::Percentage(4),
-                Constraint::Percentage(4),
-                Constraint::Percentage(4),
-            );
-            let err = MsgDialog::new()
-                .block(
-                    Block::bordered()
-                        .style(
-                            Style::default() //
-                                .fg(scheme.white[2])
-                                .bg(scheme.deepblue[0]),
-                        )
-                        .border_type(BorderType::Rounded)
-                        .title_style(Style::new().fg(ctx.g.scheme().bluegreen[0]))
-                        .padding(Padding::new(1, 1, 1, 1)),
-                )
-                .styles(theme.msg_dialog_style());
-            err.render(l_msg, buf, &mut state.message_dlg);
-        }
+        // if state.message_dlg.active() {
+        //     let l_msg = layout_middle(
+        //         r[0],
+        //         Constraint::Percentage(4),
+        //         Constraint::Percentage(4),
+        //         Constraint::Percentage(4),
+        //         Constraint::Percentage(4),
+        //     );
+        //     let err = MsgDialog::new()
+        //         .block(
+        //             Block::bordered()
+        //                 .style(
+        //                     Style::default() //
+        //                         .fg(scheme.white[2])
+        //                         .bg(scheme.deepblue[0]),
+        //                 )
+        //                 .border_type(BorderType::Rounded)
+        //                 .title_style(Style::new().fg(ctx.g.scheme().bluegreen[0]))
+        //                 .padding(Padding::new(1, 1, 1, 1)),
+        //         )
+        //         .styles(theme.msg_dialog_style());
+        //     err.render(l_msg, buf, &mut state.message_dlg);
+        // }
 
         Ok(())
     }
@@ -366,9 +345,6 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         let mut r = match mdevent {
             MDEvent::Event(event) => {
                 try_flow!(ctx.g.dialogs.clone().event(mdevent, ctx)?);
-                try_flow!(self.error_dlg.handle(event, Dialog));
-                try_flow!(self.message_dlg.handle(event, Dialog));
-                try_flow!(self.cfg_dlg.event(mdevent, ctx)?);
 
                 // ^W window commands
                 if self.window_cmd {
@@ -421,7 +397,30 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 Control::Changed
             }
             MDEvent::Message(s) => {
-                self.error_dlg.append(s);
+                if !ctx.g.dialogs.is_empty() && ctx.g.dialogs.top_state_is::<MsgDialogState>()? {
+                    ctx.g
+                        .dialogs
+                        .map_top_state_if::<MsgDialogState, _, _>(|v| {
+                            v.append(s.as_str());
+                        })?;
+                } else {
+                    ctx.g.dialogs.push_dialog(
+                        |_, ctx| {
+                            Box::new(
+                                MsgDialog::new()
+                                    .block(
+                                        Block::bordered()
+                                            .style(ctx.g.theme.dialog_base())
+                                            .border_type(BorderType::Rounded)
+                                            .title_style(Style::new().fg(ctx.g.scheme().red[0]))
+                                            .padding(Padding::new(1, 1, 1, 1)),
+                                    )
+                                    .styles(ctx.g.theme.msg_dialog_style()),
+                            )
+                        },
+                        MsgDialogState::new(s),
+                    );
+                }
                 Control::Changed
             }
             MDEvent::MenuNew => {
@@ -484,9 +483,31 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
         Ok(r)
     }
 
-    fn error(&self, event: Error, _ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
-        self.error_dlg.title("Error occured");
-        self.error_dlg.append(format!("{:?}", &*event).as_str());
+    fn error(&self, event: Error, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+        if !ctx.g.dialogs.is_empty() && ctx.g.dialogs.top_state_is::<MsgDialogState>()? {
+            ctx.g
+                .dialogs
+                .map_top_state_if::<MsgDialogState, _, _>(|v| {
+                    v.append(format!("{:?}", &*event));
+                })?;
+        } else {
+            ctx.g.dialogs.push_dialog(
+                |_, ctx| {
+                    Box::new(
+                        MsgDialog::new()
+                            .block(
+                                Block::bordered()
+                                    .style(ctx.g.theme.dialog_base())
+                                    .border_type(BorderType::Rounded)
+                                    .title_style(Style::new().fg(ctx.g.scheme().red[0]))
+                                    .padding(Padding::new(1, 1, 1, 1)),
+                            )
+                            .styles(ctx.g.theme.msg_dialog_style()),
+                    )
+                },
+                MsgDialogState::new(format!("{:?}", &*event)).title("Error occured"),
+            );
+        }
         Ok(Control::Changed)
     }
 }
@@ -555,7 +576,11 @@ impl MDAppState {
             MenuOutcome::MenuActivated(0, 2) => Control::Event(MDEvent::MenuSave),
             MenuOutcome::MenuActivated(0, 3) => Control::Event(MDEvent::MenuSaveAs),
             MenuOutcome::MenuActivated(0, 4) => {
-                self.cfg_dlg.show(ctx)?;
+                ctx.g.dialogs.push_dialog(|_, _| Box::new(ConfigDialog), {
+                    let mut dlg = ConfigDialogState::new();
+                    dlg.show(ctx)?;
+                    dlg
+                });
                 Control::Changed
             }
             MenuOutcome::MenuActivated(1, 0) => {
@@ -607,25 +632,61 @@ impl MDAppState {
         }
     }
 
-    fn show_help(&mut self, _ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+    fn show_help(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
         let txt = from_utf8(HELP)?;
         let mut txt2 = String::new();
         for l in txt.lines() {
             txt2.push_str(l);
             txt2.push('\n');
         }
-        self.message_dlg.append(&txt2);
+
+        ctx.g.dialogs.push_dialog(
+            |_, ctx| {
+                Box::new(MsgDialog::new()
+                .block(
+                    Block::bordered()
+                        .style(
+                            Style::default() //
+                                .fg(ctx.g.theme.scheme().white[2])
+                                .bg(ctx.g.theme.scheme().deepblue[0]),
+                        )
+                        .border_type(BorderType::Rounded)
+                        .title_style(Style::new().fg(ctx.g.scheme().bluegreen[0]))
+                        .padding(Padding::new(1, 1, 1, 1)),
+                )
+                .styles(ctx.g.theme.msg_dialog_style()))
+            },
+            MsgDialogState::new(txt2),
+        );
         Ok(Control::Changed)
     }
 
-    fn show_cheat(&mut self, _ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+    fn show_cheat(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
         let txt = from_utf8(CHEAT)?;
         let mut txt2 = String::new();
         for l in txt.lines() {
             txt2.push_str(l);
             txt2.push('\n');
         }
-        self.message_dlg.append(&txt2);
+
+        ctx.g.dialogs.push_dialog(
+            |_, ctx| {
+                Box::new(MsgDialog::new()
+                    .block(
+                        Block::bordered()
+                            .style(
+                                Style::default() //
+                                    .fg(ctx.g.theme.scheme().white[2])
+                                    .bg(ctx.g.theme.scheme().deepblue[0]),
+                            )
+                            .border_type(BorderType::Rounded)
+                            .title_style(Style::new().fg(ctx.g.scheme().bluegreen[0]))
+                            .padding(Padding::new(1, 1, 1, 1)),
+                    )
+                    .styles(ctx.g.theme.msg_dialog_style()))
+            },
+            MsgDialogState::new(txt2),
+        );
         Ok(Control::Changed)
     }
 }

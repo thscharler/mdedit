@@ -4,12 +4,13 @@ use crate::theme::dark_themes;
 use crate::AppContext;
 use anyhow::Error;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use rat_dialog::DialogState;
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
 use rat_widget::event::{ButtonOutcome, ChoiceOutcome, ConsumedEvent, HandleEvent, Popup, Regular};
 use rat_widget::focus::{impl_has_focus, FocusBuilder, FocusFlag, HasFocus};
-use rat_widget::layout::{FormLabel, FormWidget, LayoutForm};
+use rat_widget::layout::{layout_middle, FormLabel, FormWidget, LayoutForm};
 use rat_widget::number_input::{NumberInput, NumberInputState};
 use rat_widget::pager::{Form, FormState};
 use rat_widget::text::HasScreenCursor;
@@ -38,7 +39,7 @@ pub struct ConfigDialogState {
 }
 
 impl AppWidget<GlobalState, MDEvent, Error> for ConfigDialog {
-    type State = ConfigDialogState;
+    type State = dyn DialogState<GlobalState, MDEvent, Error>;
 
     fn render(
         &self,
@@ -47,10 +48,20 @@ impl AppWidget<GlobalState, MDEvent, Error> for ConfigDialog {
         state: &mut Self::State,
         ctx: &mut RenderContext<'_, GlobalState>,
     ) -> Result<(), Error> {
+        let state = state.downcast_mut::<ConfigDialogState>().expect("state");
+
+        let cfg_area = layout_middle(
+            area,
+            Constraint::Percentage(19),
+            Constraint::Percentage(19),
+            Constraint::Percentage(19),
+            Constraint::Percentage(19),
+        );
+
         let block = Block::bordered()
             .style(ctx.g.theme.dialog_base())
             .border_style(ctx.g.theme.dialog_border());
-        let inner = block.inner(area);
+        let inner = block.inner(cfg_area);
 
         let l = Layout::vertical([
             Constraint::Fill(1),
@@ -60,8 +71,8 @@ impl AppWidget<GlobalState, MDEvent, Error> for ConfigDialog {
         ])
         .split(inner);
 
-        reset_buf_area(area, buf);
-        block.render(area, buf);
+        reset_buf_area(cfg_area, buf);
+        block.render(cfg_area, buf);
 
         let mut form = Form::new() //
             .style(ctx.g.theme.dialog_base());
@@ -212,6 +223,12 @@ impl AppState<GlobalState, MDEvent, Error> for ConfigDialogState {
     }
 }
 
+impl DialogState<GlobalState, MDEvent, Error> for ConfigDialogState {
+    fn active(&self) -> bool {
+        self.active
+    }
+}
+
 impl ConfigDialogState {
     pub fn new() -> Self {
         Self::default()
@@ -272,9 +289,5 @@ impl ConfigDialogState {
         focus.first();
 
         Ok(())
-    }
-
-    pub fn active(&self) -> bool {
-        self.active
     }
 }
