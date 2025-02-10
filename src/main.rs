@@ -405,18 +405,17 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                         })?;
                 } else {
                     ctx.g.dialogs.push_dialog(
-                        |_, ctx| {
-                            Box::new(
-                                MsgDialog::new()
-                                    .block(
-                                        Block::bordered()
-                                            .style(ctx.g.theme.dialog_base())
-                                            .border_type(BorderType::Rounded)
-                                            .title_style(Style::new().fg(ctx.g.scheme().red[0]))
-                                            .padding(Padding::new(1, 1, 1, 1)),
-                                    )
-                                    .styles(ctx.g.theme.msg_dialog_style()),
-                            )
+                        |area, buf, state, ctx| {
+                            MsgDialog::new()
+                                .block(
+                                    Block::bordered()
+                                        .style(ctx.g.theme.dialog_base())
+                                        .border_type(BorderType::Rounded)
+                                        .title_style(Style::new().fg(ctx.g.scheme().red[0]))
+                                        .padding(Padding::new(1, 1, 1, 1)),
+                                )
+                                .styles(ctx.g.theme.msg_dialog_style())
+                                .render(area, buf, state, ctx)
                         },
                         MsgDialogState::new(s),
                     );
@@ -425,9 +424,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             }
             MDEvent::MenuNew => {
                 ctx.g.dialogs.push_dialog(
-                    |_, ctx| {
-                        Box::new(FileDialog::new()//
-                            .styles(ctx.g.theme.file_dialog_style()))
+                    |area, buf, state, ctx| {
+                        FileDialog::new()
+                            .styles(ctx.g.theme.file_dialog_style())
+                            .render(area, buf, state, ctx)
                     },
                     FileDialogState::new()
                         .save_dialog_ext(".", "", "md")?
@@ -440,7 +440,11 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             }
             MDEvent::MenuOpen => {
                 ctx.g.dialogs.push_dialog(
-                    |_, ctx| Box::new(FileDialog::new().styles(ctx.g.theme.file_dialog_style())),
+                    |area, buf, state, ctx| {
+                        FileDialog::new()
+                            .styles(ctx.g.theme.file_dialog_style())
+                            .render(area, buf, state, ctx)
+                    },
                     FileDialogState::new()
                         .open_dialog(".")?
                         .map_outcome(|r| match r {
@@ -453,7 +457,11 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             MDEvent::MenuSave => Control::Event(MDEvent::Save),
             MDEvent::MenuSaveAs => {
                 ctx.g.dialogs.push_dialog(
-                    |_, ctx| Box::new(FileDialog::new().styles(ctx.g.theme.file_dialog_style())),
+                    |area, buf, state, ctx| {
+                        FileDialog::new()
+                            .styles(ctx.g.theme.file_dialog_style())
+                            .render(area, buf, state, ctx)
+                    },
                     FileDialogState::new()
                         .save_dialog(".", "")?
                         .map_outcome(|r| match r {
@@ -492,18 +500,17 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 })?;
         } else {
             ctx.g.dialogs.push_dialog(
-                |_, ctx| {
-                    Box::new(
-                        MsgDialog::new()
-                            .block(
-                                Block::bordered()
-                                    .style(ctx.g.theme.dialog_base())
-                                    .border_type(BorderType::Rounded)
-                                    .title_style(Style::new().fg(ctx.g.scheme().red[0]))
-                                    .padding(Padding::new(1, 1, 1, 1)),
-                            )
-                            .styles(ctx.g.theme.msg_dialog_style()),
-                    )
+                |area, buf, state, ctx| {
+                    MsgDialog::new()
+                        .block(
+                            Block::bordered()
+                                .style(ctx.g.theme.dialog_base())
+                                .border_type(BorderType::Rounded)
+                                .title_style(Style::new().fg(ctx.g.scheme().red[0]))
+                                .padding(Padding::new(1, 1, 1, 1)),
+                        )
+                        .styles(ctx.g.theme.msg_dialog_style())
+                        .render(area, buf, state, ctx)
                 },
                 MsgDialogState::new(format!("{:?}", &*event)).title("Error occured"),
             );
@@ -576,11 +583,17 @@ impl MDAppState {
             MenuOutcome::MenuActivated(0, 2) => Control::Event(MDEvent::MenuSave),
             MenuOutcome::MenuActivated(0, 3) => Control::Event(MDEvent::MenuSaveAs),
             MenuOutcome::MenuActivated(0, 4) => {
-                ctx.g.dialogs.push_dialog(|_, _| Box::new(ConfigDialog), {
-                    let mut dlg = ConfigDialogState::new();
-                    dlg.show(ctx)?;
-                    dlg
-                });
+                ctx.g.dialogs.push_dialog(
+                    |area, buf, state, ctx| {
+                        ConfigDialog //
+                            .render(area, buf, state, ctx)
+                    },
+                    {
+                        let mut dlg = ConfigDialogState::new();
+                        dlg.show(ctx)?;
+                        dlg
+                    },
+                );
                 Control::Changed
             }
             MenuOutcome::MenuActivated(1, 0) => {
@@ -641,8 +654,8 @@ impl MDAppState {
         }
 
         ctx.g.dialogs.push_dialog(
-            |_, ctx| {
-                Box::new(MsgDialog::new()
+            |area, buf, state, ctx| {
+                MsgDialog::new()
                 .block(
                     Block::bordered()
                         .style(
@@ -654,7 +667,8 @@ impl MDAppState {
                         .title_style(Style::new().fg(ctx.g.scheme().bluegreen[0]))
                         .padding(Padding::new(1, 1, 1, 1)),
                 )
-                .styles(ctx.g.theme.msg_dialog_style()))
+                .styles(ctx.g.theme.msg_dialog_style())
+                    .render(area,buf,state,ctx)
             },
             MsgDialogState::new(txt2),
         );
@@ -670,8 +684,8 @@ impl MDAppState {
         }
 
         ctx.g.dialogs.push_dialog(
-            |_, ctx| {
-                Box::new(MsgDialog::new()
+            |area, buf, state, ctx| {
+                MsgDialog::new()
                     .block(
                         Block::bordered()
                             .style(
@@ -683,7 +697,8 @@ impl MDAppState {
                             .title_style(Style::new().fg(ctx.g.scheme().bluegreen[0]))
                             .padding(Padding::new(1, 1, 1, 1)),
                     )
-                    .styles(ctx.g.theme.msg_dialog_style()))
+                    .styles(ctx.g.theme.msg_dialog_style())
+                    .render(area,buf,state,ctx)
             },
             MsgDialogState::new(txt2),
         );
