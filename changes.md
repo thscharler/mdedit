@@ -1,3 +1,7 @@
+# 0.6.2
+
+* upgrade dialogs to rat-dialog. nice to use.
+
 # 0.6.1
 
 * fix: strange locale in WSL. fallback
