@@ -2,7 +2,6 @@ use crate::config::MDConfig;
 use crate::config_dlg::{ConfigDialog, ConfigDialogState};
 use crate::editor::{MDEdit, MDEditState};
 use crate::event::MDEvent;
-use crate::facilities::{Facility, MDFileDialog, MDFileDialogState};
 use crate::fs_structure::FileSysStructure;
 use crate::global::GlobalState;
 use crate::theme::{dark_themes, DarkTheme};
@@ -11,13 +10,15 @@ use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::SendError;
 use dirs::cache_dir;
 use log::{error, set_max_level};
+use rat_dialog::widgets::{FileDialog, FileDialogState};
+use rat_dialog::DialogStack;
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::thread_pool::Cancel;
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
 use rat_theme2::schemes::IMPERIAL;
 use rat_widget::event::{
-    ct_event, try_flow, ConsumedEvent, Dialog, HandleEvent, MenuOutcome, Popup,
+    ct_event, try_flow, ConsumedEvent, Dialog, FileOutcome, HandleEvent, MenuOutcome, Popup,
 };
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::hover::Hover;
@@ -26,7 +27,6 @@ use rat_widget::menu::{MenuBuilder, MenuStructure, Menubar, MenubarState, Separa
 use rat_widget::msgdialog::{MsgDialog, MsgDialogState};
 use rat_widget::popup::Placement;
 use rat_widget::statusline::{StatusLine, StatusLineState};
-use rat_widget::text::HasScreenCursor;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::StatefulWidget;
@@ -48,7 +48,6 @@ mod doc_type;
 mod editor;
 mod editor_file;
 mod event;
-mod facilities;
 mod file_list;
 mod fs_structure;
 mod global;
@@ -161,7 +160,6 @@ pub struct MDAppState {
 
     pub message_dlg: MsgDialogState,
     pub error_dlg: MsgDialogState,
-    pub file_dlg: MDFileDialogState,
     pub cfg_dlg: ConfigDialogState,
 }
 
@@ -175,7 +173,6 @@ impl Default for MDAppState {
             window_cmd: false,
             message_dlg: Default::default(),
             error_dlg: Default::default(),
-            file_dlg: Default::default(),
             cfg_dlg: Default::default(),
         };
         s
@@ -233,20 +230,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
         Hover::new().render(Rect::default(), buf, &mut ctx.g.hover);
         menu_popup.render(s[0], buf, &mut state.menu);
 
-        // dialogs
-        if state.file_dlg.active() {
-            let l_fd = layout_middle(
-                r[0],
-                Constraint::Length(state.menu.bar.item_areas[0].x),
-                Constraint::Percentage(39),
-                Constraint::Percentage(39),
-                Constraint::Length(0),
-            );
-            MDFileDialog::new()
-                .style(theme.file_dialog_style()) //
-                .render(l_fd, buf, &mut state.file_dlg);
-            ctx.set_screen_cursor(state.file_dlg.screen_cursor());
-        }
+        DialogStack.render(r[0], buf, &mut ctx.g.dialogs.clone(), ctx)?;
 
         if state.cfg_dlg.active() {
             let l_fd = layout_middle(
@@ -381,9 +365,9 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
     ) -> Result<Control<MDEvent>, Error> {
         let mut r = match mdevent {
             MDEvent::Event(event) => {
+                try_flow!(ctx.g.dialogs.clone().event(mdevent, ctx)?);
                 try_flow!(self.error_dlg.handle(event, Dialog));
                 try_flow!(self.message_dlg.handle(event, Dialog));
-                try_flow!(self.file_dlg.handle(mdevent, Dialog)?);
                 try_flow!(self.cfg_dlg.event(mdevent, ctx)?);
 
                 // ^W window commands
@@ -440,28 +424,46 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 self.error_dlg.append(s);
                 Control::Changed
             }
-            MDEvent::MenuNew => self.file_dlg.engage(
-                |w| {
-                    w.save_dialog_ext(".", "", "md")?;
-                    Ok(Control::Changed)
-                },
-                |p| Ok(Control::Event(MDEvent::New(p))),
-            )?,
-            MDEvent::MenuOpen => self.file_dlg.engage(
-                |w| {
-                    w.open_dialog(".")?;
-                    Ok(Control::Changed)
-                },
-                |p| Ok(Control::Event(MDEvent::Open(p))),
-            )?,
+            MDEvent::MenuNew => {
+                ctx.g.dialogs.push_dialog(
+                    |_, ctx| {
+                        Box::new(FileDialog::new()//
+                            .styles(ctx.g.theme.file_dialog_style()))
+                    },
+                    FileDialogState::new()
+                        .save_dialog_ext(".", "", "md")?
+                        .map_outcome(|r| match r {
+                            FileOutcome::Ok(p) => Control::Event(MDEvent::New(p)),
+                            r => r.into(),
+                        }),
+                );
+                Control::Changed
+            }
+            MDEvent::MenuOpen => {
+                ctx.g.dialogs.push_dialog(
+                    |_, ctx| Box::new(FileDialog::new().styles(ctx.g.theme.file_dialog_style())),
+                    FileDialogState::new()
+                        .open_dialog(".")?
+                        .map_outcome(|r| match r {
+                            FileOutcome::Ok(p) => Control::Event(MDEvent::Open(p)),
+                            r => r.into(),
+                        }),
+                );
+                Control::Changed
+            }
             MDEvent::MenuSave => Control::Event(MDEvent::Save),
-            MDEvent::MenuSaveAs => self.file_dlg.engage(
-                |w| {
-                    w.save_dialog(".", "")?;
-                    Ok(Control::Changed)
-                },
-                |p| Ok(Control::Event(MDEvent::SaveAs(p))),
-            )?,
+            MDEvent::MenuSaveAs => {
+                ctx.g.dialogs.push_dialog(
+                    |_, ctx| Box::new(FileDialog::new().styles(ctx.g.theme.file_dialog_style())),
+                    FileDialogState::new()
+                        .save_dialog(".", "")?
+                        .map_outcome(|r| match r {
+                            FileOutcome::Ok(p) => Control::Event(MDEvent::SaveAs(p)),
+                            r => r.into(),
+                        }),
+                );
+                Control::Changed
+            }
             MDEvent::StoreConfig => {
                 error!("{:?}", ctx.g.cfg.store());
                 Control::Continue

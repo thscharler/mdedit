@@ -72,6 +72,17 @@ impl From<crossterm::event::Event> for MDEvent {
     }
 }
 
+impl<'a> TryFrom<&'a MDEvent> for &'a crossterm::event::Event {
+    type Error = ();
+
+    fn try_from(value: &'a MDEvent) -> Result<Self, Self::Error> {
+        match value {
+            MDEvent::Event(event) => Ok(event),
+            _ => Err(()),
+        }
+    }
+}
+
 impl From<TimeOut> for MDEvent {
     fn from(value: TimeOut) -> Self {
         Self::TimeOut(value)

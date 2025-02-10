@@ -1,5 +1,8 @@
 use crate::config::MDConfig;
+use crate::event::MDEvent;
 use crate::theme::DarkTheme;
+use anyhow::Error;
+use rat_dialog::DialogStackState;
 use rat_theme2::Scheme;
 use rat_widget::hover::HoverState;
 use std::rc::Rc;
@@ -9,6 +12,7 @@ pub struct GlobalState {
     pub cfg: MDConfig,
     pub theme: Rc<DarkTheme>,
     pub hover: HoverState,
+    pub dialogs: DialogStackState<GlobalState, MDEvent, Error>,
 }
 
 impl GlobalState {
@@ -16,7 +20,8 @@ impl GlobalState {
         Self {
             cfg,
             theme: Rc::new(theme),
-            hover: HoverState::default(),
+            hover: Default::default(),
+            dialogs: Default::default(),
         }
     }
 
