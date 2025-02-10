@@ -1,3 +1,7 @@
+# 0.6.3
+
+* wrong Cargo.toml
+
 # 0.6.2
 
 * upgrade dialogs to rat-dialog. nice to use.
