@@ -4,8 +4,8 @@ use crate::theme::dark_themes;
 use crate::AppContext;
 use anyhow::Error;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use rat_dialog::DialogState;
-use rat_salsa::{AppState, AppWidget, Control, RenderContext};
+use rat_dialog::{DialogState, DialogWidget};
+use rat_salsa::{Control, RenderContext};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
 use rat_widget::event::{ButtonOutcome, ChoiceOutcome, ConsumedEvent, HandleEvent, Popup, Regular};
@@ -38,7 +38,7 @@ pub struct ConfigDialogState {
     cancel_button: ButtonState,
 }
 
-impl AppWidget<GlobalState, MDEvent, Error> for ConfigDialog {
+impl DialogWidget<GlobalState, MDEvent, Error> for ConfigDialog {
     type State = dyn DialogState<GlobalState, MDEvent, Error>;
 
     fn render(
@@ -156,10 +156,9 @@ impl AppWidget<GlobalState, MDEvent, Error> for ConfigDialog {
 
 impl_has_focus!(theme, text_width, globs, ok_button, cancel_button for ConfigDialogState);
 
-impl AppState<GlobalState, MDEvent, Error> for ConfigDialogState {
-    fn init(&mut self, ctx: &mut AppContext<'_>) -> Result<(), Error> {
-        self.text_width.set_format_loc("###0", ctx.g.cfg.loc)?;
-        Ok(())
+impl DialogState<GlobalState, MDEvent, Error> for ConfigDialogState {
+    fn active(&self) -> bool {
+        self.active
     }
 
     fn event(
@@ -223,15 +222,11 @@ impl AppState<GlobalState, MDEvent, Error> for ConfigDialogState {
     }
 }
 
-impl DialogState<GlobalState, MDEvent, Error> for ConfigDialogState {
-    fn active(&self) -> bool {
-        self.active
-    }
-}
-
 impl ConfigDialogState {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(ctx: &mut AppContext<'_>) -> Result<Self, Error> {
+        let mut s = Self::default();
+        s.text_width.set_format_loc("###0", ctx.g.cfg.loc)?;
+        Ok(s)
     }
 
     fn cancel(&mut self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {

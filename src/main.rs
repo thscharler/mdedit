@@ -11,7 +11,7 @@ use crossbeam::channel::SendError;
 use dirs::cache_dir;
 use log::{error, set_max_level};
 use rat_dialog::widgets::{FileDialog, FileDialogState, MsgDialog, MsgDialogState};
-use rat_dialog::DialogStack;
+use rat_dialog::{DialogStack, DialogWidget};
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::thread_pool::Cancel;
 use rat_salsa::timer::{TimerDef, TimerHandle};
@@ -423,51 +423,57 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                 Control::Changed
             }
             MDEvent::MenuNew => {
+                let mut state = FileDialogState::new();
+                state.save_dialog_ext(".", "", "md")?;
+                state.map_outcome(|r| match r {
+                    FileOutcome::Ok(p) => Control::Event(MDEvent::New(p)),
+                    r => r.into(),
+                });
+
                 ctx.g.dialogs.push_dialog(
                     |area, buf, state, ctx| {
                         FileDialog::new()
                             .styles(ctx.g.theme.file_dialog_style())
                             .render(area, buf, state, ctx)
                     },
-                    FileDialogState::new()
-                        .save_dialog_ext(".", "", "md")?
-                        .map_outcome(|r| match r {
-                            FileOutcome::Ok(p) => Control::Event(MDEvent::New(p)),
-                            r => r.into(),
-                        }),
+                    state,
                 );
                 Control::Changed
             }
             MDEvent::MenuOpen => {
+                let mut state = FileDialogState::new();
+                state.open_dialog(".")?;
+                state.map_outcome(|r| match r {
+                    FileOutcome::Ok(p) => Control::Event(MDEvent::Open(p)),
+                    r => r.into(),
+                });
+
                 ctx.g.dialogs.push_dialog(
                     |area, buf, state, ctx| {
                         FileDialog::new()
                             .styles(ctx.g.theme.file_dialog_style())
                             .render(area, buf, state, ctx)
                     },
-                    FileDialogState::new()
-                        .open_dialog(".")?
-                        .map_outcome(|r| match r {
-                            FileOutcome::Ok(p) => Control::Event(MDEvent::Open(p)),
-                            r => r.into(),
-                        }),
+                    state,
                 );
                 Control::Changed
             }
             MDEvent::MenuSave => Control::Event(MDEvent::Save),
             MDEvent::MenuSaveAs => {
+                let mut state = FileDialogState::new();
+                state.save_dialog(".", "")?;
+                state.map_outcome(|r| match r {
+                    FileOutcome::Ok(p) => Control::Event(MDEvent::SaveAs(p)),
+                    r => r.into(),
+                });
+
                 ctx.g.dialogs.push_dialog(
                     |area, buf, state, ctx| {
                         FileDialog::new()
                             .styles(ctx.g.theme.file_dialog_style())
                             .render(area, buf, state, ctx)
                     },
-                    FileDialogState::new()
-                        .save_dialog(".", "")?
-                        .map_outcome(|r| match r {
-                            FileOutcome::Ok(p) => Control::Event(MDEvent::SaveAs(p)),
-                            r => r.into(),
-                        }),
+                    state,
                 );
                 Control::Changed
             }
@@ -583,16 +589,15 @@ impl MDAppState {
             MenuOutcome::MenuActivated(0, 2) => Control::Event(MDEvent::MenuSave),
             MenuOutcome::MenuActivated(0, 3) => Control::Event(MDEvent::MenuSaveAs),
             MenuOutcome::MenuActivated(0, 4) => {
+                let mut dlg = ConfigDialogState::new(ctx)?;
+                dlg.show(ctx)?;
+
                 ctx.g.dialogs.push_dialog(
                     |area, buf, state, ctx| {
                         ConfigDialog //
                             .render(area, buf, state, ctx)
                     },
-                    {
-                        let mut dlg = ConfigDialogState::new();
-                        dlg.show(ctx)?;
-                        dlg
-                    },
+                    dlg,
                 );
                 Control::Changed
             }
