@@ -254,7 +254,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                 };
                 r = r.or_else_try(|| match event {
                     ct_event!(key press CONTROL-'l') => {
-                        self.follow_link() //
+                        self.follow_link(ctx) //
                     }
                     ct_event!(keycode press F(8)) => {
                         if self.edit.is_focused() {
@@ -326,7 +326,7 @@ impl MDFileState {
     }
 
     /// Follow the link at the cursor.
-    fn follow_link(&self) -> Result<Control<MDEvent>, Error> {
+    fn follow_link(&self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
         let pos = self.edit.byte_at(self.edit.cursor());
         let Some(link_range) = self.edit.style_match(pos.start, MDStyle::Link.into()) else {
             return Ok(Control::Continue);
@@ -340,6 +340,16 @@ impl MDFileState {
                     if !dest_url.starts_with("/") && dest_url.ends_with(".md") {
                         if let Some(parent) = self.path.parent() {
                             let path = parent.join(dest_url.as_ref());
+
+                            // auto-create
+                            if !path.exists() {
+                                if let Some(parent) = path.parent() {
+                                    fs::create_dir_all(parent)?;
+                                    File::create(&path)?;
+                                    ctx.queue(Control::Event(MDEvent::SyncFileList));
+                                }
+                            }
+
                             return Ok(Control::Event(MDEvent::SelectOrOpen(path)));
                         } else {
                             return Err(anyhow!("Can't locate current file??"));

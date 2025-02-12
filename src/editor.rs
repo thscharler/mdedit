@@ -75,7 +75,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
         ctx: &mut rat_salsa::AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<Control<MDEvent>, Error> {
         let old_selected = self.split_tab.selected_pos();
-        let mut must_sync = false;
+        let mut sync_files = false;
 
         let mut r = match event {
             MDEvent::Event(event) => {
@@ -95,7 +95,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
             MDEvent::SelectOrOpenSplit(p) => self.select_or_open_split(p, ctx)?,
             MDEvent::Open(p) => self.open(p, ctx)?,
             MDEvent::Save => {
-                must_sync = true;
+                sync_files = true;
                 self.save(ctx)?
             }
             MDEvent::SaveAs(p) => self.save_as(p, ctx)?,
@@ -115,6 +115,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
             MDEvent::NextEditSplit => self.split_tab.select_next(ctx).into(),
             MDEvent::HideFiles => self.hide_files(ctx)?,
             MDEvent::SyncEdit => self.roll_forward_edit(ctx)?,
+            MDEvent::SyncFileList => {
+                sync_files = true;
+                Control::Continue
+            }
             MDEvent::FileSys(fs) => {
                 self.file_list.replace_fs(fs.take());
                 self.file_list.init(ctx)?;
@@ -139,8 +143,8 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
         self.split_tab.assert_selection();
 
         let selected = self.split_tab.selected_pos();
-        if selected != old_selected {
-            let f = self.sync_file_list(must_sync, ctx)?;
+        if selected != old_selected || sync_files {
+            let f = self.sync_file_list(sync_files, ctx)?;
             ctx.queue(f);
         }
 

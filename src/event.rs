@@ -28,6 +28,7 @@ pub enum MDEvent {
     MenuFormatEq,
     CfgShowCtrl,
     SyncEdit,
+    SyncFileList,
     New(PathBuf),
     Open(PathBuf),
     SelectOrOpen(PathBuf),

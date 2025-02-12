@@ -424,7 +424,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             }
             MDEvent::MenuNew => {
                 let mut state = FileDialogState::new();
-                state.save_dialog_ext(".", "", "md")?;
+                state.save_dialog_ext(self.editor.file_list.current_dir(), "", "md")?;
                 state.map_outcome(|r| match r {
                     FileOutcome::Ok(p) => Control::Event(MDEvent::New(p)),
                     r => r.into(),
