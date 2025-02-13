@@ -590,7 +590,7 @@ impl DarkTheme {
             select: Some(self.select()),
             focus: Some(self.focus()),
             popup: PopupStyle {
-                style: self.container_base(),
+                style: self.style(self.s.black[3]),
                 scroll: Some(self.scroll_style()),
                 block: Some(
                     Block::bordered()

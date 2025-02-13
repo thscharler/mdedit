@@ -9,6 +9,7 @@ use rat_markdown::styles::MDStyle;
 use rat_markdown::MarkDown;
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
+use rat_widget::event::util::MouseFlags;
 use rat_widget::event::{ct_event, ConsumedEvent, HandleEvent, TextOutcome};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
 use rat_widget::line_number::{LineNumberState, LineNumbers};
@@ -40,6 +41,7 @@ pub struct MDFileState {
     pub changed: bool,
     pub doc_type: DocTypes,
     pub edit: TextAreaState,
+    pub edit_mouse: MouseFlags,
     pub linenr: LineNumberState,
     pub parse_timer: Option<TimerHandle>,
 }
@@ -62,6 +64,7 @@ impl Clone for MDFileState {
             changed: self.changed,
             doc_type: self.doc_type,
             edit: self.edit.clone(),
+            edit_mouse: self.edit_mouse.clone(),
             linenr: self.linenr.clone(),
             parse_timer: None,
         };
@@ -240,6 +243,17 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                 }
             }
             MDEvent::Event(event) => {
+                match event {
+                    ct_event!(mouse any for m)
+                        if self.edit_mouse.doubleclick(self.edit.inner, m) =>
+                    {
+                        match self.follow_link(ctx) {
+                            Ok(md @ Control::Event(MDEvent::SelectOrOpen(_))) => ctx.queue(md),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
                 // call markdown event-handling instead of regular.
                 let mut r = match self.edit.handle(event, MarkDown::new(ctx.g.cfg.text_width)) {
                     TextOutcome::TextChanged => {
@@ -389,6 +403,7 @@ impl MDFileState {
             changed: Default::default(),
             doc_type,
             edit,
+            edit_mouse: Default::default(),
             linenr: Default::default(),
             parse_timer: None,
         }
@@ -417,6 +432,7 @@ impl MDFileState {
             changed: Default::default(),
             doc_type,
             edit,
+            edit_mouse: Default::default(),
             linenr: Default::default(),
             parse_timer: Some(
                 ctx.add_timer(TimerDef::new().next(Instant::now() + Duration::from_millis(0))),

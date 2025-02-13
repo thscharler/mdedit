@@ -15,7 +15,7 @@ use rat_widget::util::revert_style;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::text::Line;
-use ratatui::widgets::{StatefulWidget, StatefulWidgetRef, Widget};
+use ratatui::widgets::{StatefulWidget, Widget};
 use std::cmp::min;
 use std::path::{Path, PathBuf};
 
@@ -90,7 +90,7 @@ impl AppWidget<GlobalState, MDEvent, Error> for FileList {
             .behave_select(ChoiceSelect::MouseClick)
             .behave_close(ChoiceClose::SingleClick)
             .into_widgets();
-        choice.render_ref(l_file_list[2], buf, &mut state.file_system);
+        choice.render(l_file_list[2], buf, &mut state.file_system);
 
         buf.set_style(l_file_list[3], theme.container_base());
 
@@ -175,8 +175,17 @@ impl AppState<GlobalState, MDEvent, Error> for FileListState {
             MDEvent::Event(event) => {
                 try_flow!(match self.file_system.handle(event, Popup) {
                     ChoiceOutcome::Value => {
+                        if matches!(event, ct_event!(keycode press Enter)) {
+                            ctx.focus().next();
+                        }
                         let sel_path = self.file_system.value();
                         self.load_current(&sel_path, &ctx.g.cfg.globs)?;
+                        Control::Changed
+                    }
+                    ChoiceOutcome::Changed => {
+                        if matches!(event, ct_event!(keycode press Enter)) {
+                            ctx.focus().next();
+                        }
                         Control::Changed
                     }
                     r => r.into(),

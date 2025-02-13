@@ -74,6 +74,8 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
         event: &MDEvent,
         ctx: &mut rat_salsa::AppContext<'_, GlobalState, MDEvent, Error>,
     ) -> Result<Control<MDEvent>, Error> {
+        // let et = SystemTime::now();
+
         let old_selected = self.split_tab.selected_pos();
         let mut sync_files = false;
 
@@ -82,8 +84,10 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
                 // main split between file-list and editors
                 try_flow!(match self.split_files.handle(event, Regular) {
                     Outcome::Changed => {
-                        ctx.g.cfg.file_split_at = self.split_files.area_len(0);
-                        ctx.queue(Control::Event(MDEvent::StoreConfig));
+                        if !self.split_files.is_hidden(0) {
+                            ctx.g.cfg.file_split_at = self.split_files.area_len(0);
+                            ctx.queue(Control::Event(MDEvent::StoreConfig));
+                        }
                         Control::Changed
                     }
                     r => r.into(),
@@ -147,6 +151,8 @@ impl AppState<GlobalState, MDEvent, Error> for MDEditState {
             let f = self.sync_file_list(sync_files, ctx)?;
             ctx.queue(f);
         }
+
+        // debug!("et {:?}", et.elapsed());
 
         Ok(r)
     }

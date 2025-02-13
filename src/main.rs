@@ -9,7 +9,7 @@ use anyhow::Error;
 use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::SendError;
 use dirs::cache_dir;
-use log::{error, set_max_level};
+use log::error;
 use rat_dialog::widgets::{FileDialog, FileDialogState, MsgDialog, MsgDialogState};
 use rat_dialog::{DialogStack, DialogWidget};
 use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
@@ -56,7 +56,6 @@ fn main() -> Result<(), Error> {
     setup_logging()?;
 
     let mut config = MDConfig::load()?;
-    set_max_level(config.log_level.parse()?);
 
     let mut args = args();
     args.next();
@@ -218,53 +217,10 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDApp {
 
         // some overlays
         Hover::new().render(Rect::default(), buf, &mut ctx.g.hover);
+        // menu popups
         menu_popup.render(s[0], buf, &mut state.menu);
-
+        // dialogs
         DialogStack.render(r[0], buf, &mut ctx.g.dialogs.clone(), ctx)?;
-
-        // if state.error_dlg.active() {
-        //     let l_msg = layout_middle(
-        //         r[0],
-        //         Constraint::Percentage(19),
-        //         Constraint::Percentage(19),
-        //         Constraint::Percentage(19),
-        //         Constraint::Percentage(19),
-        //     );
-        //     let err = MsgDialog::new()
-        //         .block(
-        //             Block::bordered()
-        //                 .style(theme.dialog_base())
-        //                 .border_type(BorderType::Rounded)
-        //                 .title_style(Style::new().fg(ctx.g.scheme().red[0]))
-        //                 .padding(Padding::new(1, 1, 1, 1)),
-        //         )
-        //         .styles(theme.msg_dialog_style());
-        //     err.render(l_msg, buf, &mut state.error_dlg);
-        // }
-
-        // if state.message_dlg.active() {
-        //     let l_msg = layout_middle(
-        //         r[0],
-        //         Constraint::Percentage(4),
-        //         Constraint::Percentage(4),
-        //         Constraint::Percentage(4),
-        //         Constraint::Percentage(4),
-        //     );
-        //     let err = MsgDialog::new()
-        //         .block(
-        //             Block::bordered()
-        //                 .style(
-        //                     Style::default() //
-        //                         .fg(scheme.white[2])
-        //                         .bg(scheme.deepblue[0]),
-        //                 )
-        //                 .border_type(BorderType::Rounded)
-        //                 .title_style(Style::new().fg(ctx.g.scheme().bluegreen[0]))
-        //                 .padding(Padding::new(1, 1, 1, 1)),
-        //         )
-        //         .styles(theme.msg_dialog_style());
-        //     err.render(l_msg, buf, &mut state.message_dlg);
-        // }
 
         Ok(())
     }
@@ -288,7 +244,7 @@ impl HasFocus for MDAppState {
 impl AppState<GlobalState, MDEvent, Error> for MDAppState {
     fn init(&mut self, ctx: &mut AppContext<'_>) -> Result<(), Error> {
         ctx.focus = Some(FocusBuilder::build_for(self));
-        ctx.focus().enable_log();
+        // ctx.focus().enable_log();
 
         self.editor.init(ctx)?;
 
@@ -376,6 +332,20 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
                         self.window_cmd = true;
                         Control::Changed
                     }
+                    ct_event!(focus_gained) => {
+                        let cfg = ctx.g.cfg.globs.clone();
+                        let root = self.editor.file_list.root().to_path_buf();
+                        let current = self.editor.file_list.current_dir().to_path_buf();
+                        _ = ctx.spawn(move |_can, _send| {
+                            let mut sys = FileSysStructure::new();
+                            sys.load_filesys(&root)?;
+                            sys.load_current(&current, &cfg)?;
+                            Ok(Control::Event(MDEvent::FileSys(
+                                Box::new(AtomicCell::new(sys)), //
+                            )))
+                        });
+                        Control::Continue
+                    }
                     ct_event!(focus_lost) => Control::Event(MDEvent::Save),
                     _ => Control::Continue,
                 };
@@ -389,7 +359,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
             MDEvent::Rendered => {
                 // rebuild keyboard + mouse focus
                 ctx.focus = Some(FocusBuilder::rebuild_for(self, ctx.focus.take()));
-                ctx.focus().enable_log();
+                // ctx.focus().enable_log();
                 Control::Continue
             }
             MDEvent::Status(n, s) => {
@@ -498,6 +468,8 @@ impl AppState<GlobalState, MDEvent, Error> for MDAppState {
     }
 
     fn error(&self, event: Error, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+        error!("{:#?}", event);
+
         if !ctx.g.dialogs.is_empty() && ctx.g.dialogs.top_state_is::<MsgDialogState>()? {
             ctx.g
                 .dialogs
@@ -728,7 +700,6 @@ fn setup_logging() -> Result<(), Error> {
             .format(|out, message, _record| {
                 out.finish(format_args!("{}", message)) //
             })
-            .level(log::LevelFilter::Debug)
             .chain(fern::log_file(&log_file)?)
             .apply()?;
     }

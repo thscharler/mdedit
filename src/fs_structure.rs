@@ -185,10 +185,13 @@ impl FileSysStructure {
             let rd = glob::glob(pat.as_ref())?;
 
             for f in rd {
-                let Ok(f) = f else {
+                let Ok(mut f) = f else {
                     continue;
                 };
                 if f.is_file() {
+                    if f.is_relative() && !f.starts_with(PathBuf::from(".")) {
+                        f = PathBuf::from(".").join(f);
+                    }
                     debug!("    found {:?} -> {:?}", pat, f);
                     self.files.push(f);
                 }
