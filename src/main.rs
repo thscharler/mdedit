@@ -16,7 +16,7 @@ use rat_salsa::poll::{PollCrossterm, PollRendered, PollTasks, PollTimers};
 use rat_salsa::thread_pool::Cancel;
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, AppState, AppWidget, Control, RenderContext, RunConfig};
-use rat_theme2::schemes::IMPERIAL;
+use rat_theme2::palettes::IMPERIAL;
 use rat_widget::event::{
     ct_event, try_flow, ConsumedEvent, FileOutcome, HandleEvent, MenuOutcome, Popup,
 };

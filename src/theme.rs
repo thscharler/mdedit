@@ -2,11 +2,11 @@
 //! Implements a dark theme.
 //!
 
-use rat_theme2::schemes::{
+use rat_theme2::palettes::{
     BASE16, BASE16_RELAXED, BLACKWHITE, IMPERIAL, MONEKAI, MONOCHROME, OCEAN, OXOCARBON, RADIUM,
     TUNDRA, VSCODE_DARK,
 };
-use rat_theme2::{Contrast, Scheme, TextColorRating};
+use rat_theme2::{Contrast, Palette, TextColorRating};
 use rat_widget::button::ButtonStyle;
 use rat_widget::calendar::CalendarStyle;
 use rat_widget::checkbox::CheckboxStyle;
@@ -35,12 +35,12 @@ use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct DarkTheme {
-    s: Scheme,
+    s: Palette,
     name: String,
 }
 
 impl DarkTheme {
-    pub fn new(name: String, s: Scheme) -> Self {
+    pub fn new(name: String, s: Palette) -> Self {
         Self { s, name }
     }
 }
@@ -57,7 +57,7 @@ impl DarkTheme {
     }
 
     /// The underlying scheme.
-    pub fn scheme(&self) -> &Scheme {
+    pub fn scheme(&self) -> &Palette {
         &self.s
     }
 
@@ -606,7 +606,7 @@ impl DarkTheme {
     /// ----------------------
 
     pub fn doc_base_color(&self) -> Color {
-        self.s.limegreen[Scheme::DARK_0]
+        self.s.limegreen[Palette::DARK_0]
     }
 
     pub fn doc_base(&self) -> Style {
@@ -655,7 +655,7 @@ impl DarkTheme {
 
     /// Style for LineNumbers.
     pub fn line_nr_style_doc(&self) -> LineNumberStyle {
-        let fg = match Scheme::rate_text_color(self.doc_base().bg.expect("bg")) {
+        let fg = match Palette::rate_text_color(self.doc_base().bg.expect("bg")) {
             None => self.s.gray[3],
             Some(TextColorRating::Light) => self.s.gray[3],
             Some(TextColorRating::Dark) => self.s.gray[0],
@@ -696,7 +696,7 @@ impl DarkTheme {
     }
 }
 
-/// A list of DarkTheme for all color schemes.
+/// A list of DarkTheme for all color palettes.
 pub fn dark_themes() -> Vec<DarkTheme> {
     vec![
         DarkTheme::new("Imperial".to_string(), IMPERIAL),

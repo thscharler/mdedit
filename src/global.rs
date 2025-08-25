@@ -3,7 +3,7 @@ use crate::event::MDEvent;
 use crate::theme::DarkTheme;
 use anyhow::Error;
 use rat_dialog::DialogStackState;
-use rat_theme2::Scheme;
+use rat_theme2::Palette;
 use rat_widget::hover::HoverState;
 use std::rc::Rc;
 
@@ -25,7 +25,7 @@ impl GlobalState {
         }
     }
 
-    pub fn scheme(&self) -> &Scheme {
+    pub fn scheme(&self) -> &Palette {
         &self.theme.scheme()
     }
 }
