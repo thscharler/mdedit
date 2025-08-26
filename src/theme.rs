@@ -606,7 +606,7 @@ impl DarkTheme {
     /// ----------------------
 
     pub fn doc_base_color(&self) -> Color {
-        self.s.limegreen[Palette::DARK_0]
+        self.s.black[Palette::DARK_3]
     }
 
     pub fn doc_base(&self) -> Style {

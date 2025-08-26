@@ -93,22 +93,14 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDFile {
     ) -> Result<(), Error> {
         let theme = &ctx.g.theme;
 
-        let line_nr = LineNumbers::new()
-            .start(state.edit.offset().1 as upos_type)
-            .end(state.edit.len_lines())
-            .cursor(state.edit.cursor().y)
-            .styles(theme.line_nr_style_doc());
+        let ln_width = LineNumbers::width_for(state.edit.vertical_offset(), 0, (0, 0), 0);
 
-        let line_nr_area = Rect::new(area.x, area.y, line_nr.width(), area.height);
         let text_area = Rect::new(
-            area.x + line_nr.width(),
+            area.x + ln_width,
             area.y,
-            area.width.saturating_sub(line_nr.width()),
+            area.width.saturating_sub(ln_width),
             area.height,
         );
-
-        line_nr.render(line_nr_area, buf, &mut state.linenr);
-
         TextArea::new()
             .block(
                 Block::new()
@@ -119,13 +111,20 @@ impl AppWidget<GlobalState, MDEvent, Error> for MDFile {
             .styles(theme.textarea_style_doc())
             .text_style_map(text_style(ctx))
             .render(text_area, buf, &mut state.edit);
+
+        let line_nr_area = Rect::new(area.x, area.y, ln_width, area.height);
+        LineNumbers::new()
+            .with_textarea(&state.edit)
+            .styles(theme.line_nr_style_doc())
+            .render(line_nr_area, buf, &mut state.linenr);
+
         ctx.set_screen_cursor(state.edit.screen_cursor());
 
         Ok(())
     }
 }
 
-fn text_style(ctx: &mut RenderContext<'_, GlobalState>) -> HashMap<usize, Style> {
+fn text_style(ctx: &RenderContext<'_, GlobalState>) -> HashMap<usize, Style> {
     let sc = ctx.g.scheme();
     let sty = |c: Color| Style::new().fg(c);
 
@@ -294,7 +293,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                     }
                     ct_event!(key press ALT-'w') => match self.edit.text_wrap() {
                         TextWrap::Shift => {
-                            self.edit.set_text_wrap(TextWrap::Word(8));
+                            self.edit.set_text_wrap(TextWrap::Word(6));
                             Ok(Control::Changed)
                         }
                         TextWrap::Hard | TextWrap::Word(_) => {
@@ -302,7 +301,7 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                             Ok(Control::Changed)
                         }
                         _ => {
-                            self.edit.set_text_wrap(TextWrap::Word(8));
+                            self.edit.set_text_wrap(TextWrap::Word(6));
                             Ok(Control::Changed)
                         }
                     },
