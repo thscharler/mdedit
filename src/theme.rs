@@ -4,7 +4,7 @@
 
 use rat_theme2::palettes::{
     BASE16, BASE16_RELAXED, BLACKWHITE, IMPERIAL, MONEKAI, MONOCHROME, OCEAN, OXOCARBON, RADIUM,
-    TUNDRA, VSCODE_DARK,
+    SOLARIZED, VSCODE_DARK,
 };
 use rat_theme2::{Contrast, Palette, TextColorRating};
 use rat_widget::button::ButtonStyle;
@@ -702,9 +702,10 @@ pub fn dark_themes() -> Vec<DarkTheme> {
         DarkTheme::new("Imperial".to_string(), IMPERIAL),
         DarkTheme::new("Black&White".to_string(), BLACKWHITE),
         DarkTheme::new("Radium".to_string(), RADIUM),
-        DarkTheme::new("Tundra".to_string(), TUNDRA),
+        DarkTheme::new("Tundra".to_string(), SOLARIZED),
         DarkTheme::new("Monochrome".to_string(), MONOCHROME),
         DarkTheme::new("Monekai".to_string(), MONEKAI),
+        DarkTheme::new("Solarized".to_string(), SOLARIZED),
         DarkTheme::new("Oxocarbon".to_string(), OXOCARBON),
         DarkTheme::new("VSCodeDark".to_string(), VSCODE_DARK),
         DarkTheme::new("Ocean".to_string(), OCEAN),

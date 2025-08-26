@@ -16,7 +16,7 @@ use rat_widget::line_number::{LineNumberState, LineNumbers};
 use rat_widget::scrolled::Scroll;
 use rat_widget::text::clipboard::{Clipboard, ClipboardError};
 use rat_widget::text::{upos_type, HasScreenCursor};
-use rat_widget::textarea::{TextArea, TextAreaState};
+use rat_widget::textarea::{TextArea, TextAreaState, TextWrap};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style, Stylize};
@@ -292,6 +292,20 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                             Ok(Control::Continue)
                         }
                     }
+                    ct_event!(key press ALT-'w') => match self.edit.text_wrap() {
+                        TextWrap::Shift => {
+                            self.edit.set_text_wrap(TextWrap::Word(8));
+                            Ok(Control::Changed)
+                        }
+                        TextWrap::Hard | TextWrap::Word(_) => {
+                            self.edit.set_text_wrap(TextWrap::Shift);
+                            Ok(Control::Changed)
+                        }
+                        _ => {
+                            self.edit.set_text_wrap(TextWrap::Word(8));
+                            Ok(Control::Changed)
+                        }
+                    },
                     _ => Ok(Control::Continue),
                 })?;
                 r
