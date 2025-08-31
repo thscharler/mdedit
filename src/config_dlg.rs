@@ -9,7 +9,7 @@ use rat_salsa::{Control, RenderContext};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
 use rat_widget::event::{ButtonOutcome, ChoiceOutcome, ConsumedEvent, HandleEvent, Popup, Regular};
-use rat_widget::focus::{impl_has_focus, FocusBuilder, FocusFlag, HasFocus};
+use rat_widget::focus::{impl_has_focus, FocusBuilder, HasFocus};
 use rat_widget::layout::{layout_middle, FormLabel, FormWidget, LayoutForm};
 use rat_widget::number_input::{NumberInput, NumberInputState};
 use rat_widget::pager::{Form, FormState};
@@ -29,7 +29,7 @@ pub struct ConfigDialog;
 pub struct ConfigDialogState {
     active: bool,
 
-    form: FormState<FocusFlag>,
+    form: FormState<usize>,
     theme: ChoiceState<String>,
     text_width: NumberInputState,
     globs: TextInputState,
@@ -85,17 +85,17 @@ impl DialogWidget<GlobalState, MDEvent, Error> for ConfigDialog {
                 .flex(Flex::Legacy);
 
             layout.widget(
-                state.theme.focus(),
+                state.theme.id(),
                 FormLabel::Str("Theme"),
                 FormWidget::Width(25),
             );
             layout.widget(
-                state.text_width.focus(),
+                state.text_width.id(),
                 FormLabel::Str("Text break at"),
                 FormWidget::Width(15),
             );
             layout.widget(
-                state.globs.focus(),
+                state.globs.id(),
                 FormLabel::Str("Files glob"),
                 FormWidget::Width(35),
             );
@@ -104,7 +104,7 @@ impl DialogWidget<GlobalState, MDEvent, Error> for ConfigDialog {
         let mut form = form.into_buffer(l[0], buf, &mut state.form);
 
         let choice_overlay = form.render2(
-            state.theme.focus(),
+            state.theme.id(),
             || {
                 Choice::new()
                     .styles(ctx.g.theme.choice_style())
@@ -118,16 +118,18 @@ impl DialogWidget<GlobalState, MDEvent, Error> for ConfigDialog {
             &mut state.theme,
         );
         form.render(
-            state.text_width.focus(),
+            state.text_width.id(),
             || NumberInput::new().styles(ctx.g.theme.text_style()),
             &mut state.text_width,
         );
         form.render(
-            state.globs.focus(),
+            state.globs.id(),
             || TextInput::new().styles(ctx.g.theme.text_style()),
             &mut state.globs,
         );
-        form.render_opt(state.theme.focus(), || choice_overlay, &mut state.theme);
+        if let Some(choice_overlay) = choice_overlay {
+            form.render(state.theme.id(), || choice_overlay, &mut state.theme);
+        }
 
         // that "§$"§ curser
         ctx.set_screen_cursor(

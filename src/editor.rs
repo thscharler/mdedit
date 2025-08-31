@@ -5,7 +5,6 @@ use crate::fs_structure::FileSysStructure;
 use crate::global::GlobalState;
 use crate::split_tab::{SplitTab, SplitTabState};
 use crate::AppContext;
-use crate::FocusFlag;
 use anyhow::Error;
 use rat_salsa::{AppState, AppWidget, Control, RenderContext};
 use rat_widget::event::{try_flow, ConsumedEvent, HandleEvent, Outcome, Regular};

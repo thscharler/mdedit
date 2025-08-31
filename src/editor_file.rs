@@ -15,7 +15,7 @@ use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
 use rat_widget::line_number::{LineNumberState, LineNumbers};
 use rat_widget::scrolled::Scroll;
 use rat_widget::text::clipboard::{Clipboard, ClipboardError};
-use rat_widget::text::{upos_type, HasScreenCursor};
+use rat_widget::text::HasScreenCursor;
 use rat_widget::textarea::{TextArea, TextAreaState, TextWrap};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
