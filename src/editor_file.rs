@@ -265,48 +265,54 @@ impl AppState<GlobalState, MDEvent, Error> for MDFileState {
                     }
                     r => r.into(),
                 };
-                r = r.or_else_try(|| match event {
-                    ct_event!(key press CONTROL-'l') => {
-                        self.follow_link(ctx) //
-                    }
-                    ct_event!(keycode press F(8)) => {
-                        if self.edit.is_focused() {
-                            self.reformat(false, ctx)
-                        } else {
-                            Ok(Control::Continue)
+                if self.is_focused() {
+                    r = r.or_else_try(|| match event {
+                        ct_event!(key press CONTROL-'l') => {
+                            self.follow_link(ctx) //
                         }
-                    }
-                    ct_event!(keycode press F(7)) => {
-                        if self.edit.is_focused() {
-                            self.reformat(true, ctx)
-                        } else {
-                            Ok(Control::Continue)
+                        ct_event!(keycode press F(8)) => {
+                            if self.edit.is_focused() {
+                                self.reformat(false, ctx)
+                            } else {
+                                Ok(Control::Continue)
+                            }
                         }
-                    }
-                    ct_event!(key press CONTROL-'p') => {
-                        if self.edit.is_focused() {
-                            self.doc_type.log_parser(&self.edit);
-                            Ok(Control::Continue)
-                        } else {
-                            Ok(Control::Continue)
+                        ct_event!(keycode press F(7)) => {
+                            if self.edit.is_focused() {
+                                self.reformat(true, ctx)
+                            } else {
+                                Ok(Control::Continue)
+                            }
                         }
-                    }
-                    ct_event!(key press ALT-'w') => match self.edit.text_wrap() {
-                        TextWrap::Shift => {
-                            self.edit.set_text_wrap(TextWrap::Word(6));
+                        ct_event!(key press CONTROL-'p') => {
+                            if self.edit.is_focused() {
+                                self.doc_type.log_parser(&self.edit);
+                                Ok(Control::Continue)
+                            } else {
+                                Ok(Control::Continue)
+                            }
+                        }
+                        ct_event!(key press ALT-'w') => match self.edit.text_wrap() {
+                            TextWrap::Shift => {
+                                self.edit.set_text_wrap(TextWrap::Word(6));
+                                Ok(Control::Changed)
+                            }
+                            TextWrap::Hard | TextWrap::Word(_) => {
+                                self.edit.set_text_wrap(TextWrap::Shift);
+                                Ok(Control::Changed)
+                            }
+                            _ => {
+                                self.edit.set_text_wrap(TextWrap::Word(6));
+                                Ok(Control::Changed)
+                            }
+                        },
+                        ct_event!(key press ALT-'b') => {
+                            self.edit.set_wrap_ctrl(!self.edit.wrap_ctrl());
                             Ok(Control::Changed)
                         }
-                        TextWrap::Hard | TextWrap::Word(_) => {
-                            self.edit.set_text_wrap(TextWrap::Shift);
-                            Ok(Control::Changed)
-                        }
-                        _ => {
-                            self.edit.set_text_wrap(TextWrap::Word(6));
-                            Ok(Control::Changed)
-                        }
-                    },
-                    _ => Ok(Control::Continue),
-                })?;
+                        _ => Ok(Control::Continue),
+                    })?;
+                }
                 r
             }
             MDEvent::MenuFormat => {
@@ -373,7 +379,7 @@ impl MDFileState {
                                 if let Some(parent) = path.parent() {
                                     fs::create_dir_all(parent)?;
                                     File::create(&path)?;
-                                    ctx.queue(Control::Event(MDEvent::SyncFileList));
+                                    ctx.queue_event(MDEvent::SyncFileList);
                                 }
                             }
 

@@ -106,6 +106,9 @@ If the file is already open it is selected instead.
 | Alt+R                        | Add reference.                   |
 | Alt+F                        | Add footnote.                    |
 |                              |                                  |
+| Alt+W                        | Toggle text-wrapping.            |
+| Alt+B                        | Show text-wrapping.              |
+|                              |                                  |
 | any bracket + Selection      | Wrap the selected text with the  |
 |                              | bracket.                         |
 
