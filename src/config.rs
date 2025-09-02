@@ -53,41 +53,32 @@ impl MDConfig {
             let config = config.join("mdedit").join("mdedit.ini");
             if config.exists() {
                 let ini = Ini::load_from_file(config)?;
+                let sec = ini.general_section();
 
-                let section: Option<String> = None;
+                let theme = sec.get("theme").unwrap_or("Imperial");
 
-                let theme = ini.get_from_or(section.clone(), "theme", "Imperial");
-
-                let file_split_at = ini
-                    .get_from_or(
-                        section.clone(),
-                        "file_split_at",
-                        DEFAULT_FILE_SPLIT_AT.to_string().as_str(),
-                    )
+                let file_split_at = sec
+                    .get("file_split_at")
+                    .unwrap_or(DEFAULT_FILE_SPLIT_AT.to_string().as_str())
                     .parse()
                     .unwrap_or(DEFAULT_FILE_SPLIT_AT);
 
-                let text_width = ini
-                    .get_from_or(
-                        section.clone(),
-                        "text_width",
-                        DEFAULT_TEXT_WIDTH.to_string().as_str(),
-                    )
+                let text_width = sec
+                    .get("text_width")
+                    .unwrap_or(DEFAULT_TEXT_WIDTH.to_string().as_str())
                     .parse()
                     .unwrap_or(DEFAULT_TEXT_WIDTH);
 
-                let mut globs = ini
-                    .get_from_or(section.clone(), "file_pattern", "*.md")
+                let mut globs = sec
+                    .get("file_pattern")
+                    .unwrap_or("*.md")
                     .split([' ', ','])
                     .map(|v| v.to_string())
                     .collect::<Vec<_>>();
                 globs.sort();
                 globs.dedup();
 
-                let log = ini
-                    .get_from_or(section.clone(), "log", "warn")
-                    .trim()
-                    .to_string();
+                let log = sec.get("log").unwrap_or("warn").trim().to_string();
 
                 Some(MDConfig {
                     theme: theme.into(),
@@ -116,21 +107,12 @@ impl MDConfig {
 
             let config = config_dir.join("mdedit.ini");
             let mut ini = Ini::new();
-            let section: Option<String> = None;
-            ini.set_to(section.clone(), "theme".into(), self.theme.clone());
-            ini.set_to(
-                section.clone(),
-                "file_split_at".into(),
-                self.file_split_at.to_string(),
-            );
-            ini.set_to(
-                section.clone(),
-                "text_width".into(),
-                self.text_width.to_string(),
-            );
-            ini.set_to(
-                section.clone(),
-                "file_pattern".into(),
+            let mut sec = ini.with_general_section();
+            sec.set("theme", self.theme.clone());
+            sec.set("file_split_at", self.file_split_at.to_string());
+            sec.set("text_width", self.text_width.to_string());
+            sec.set(
+                "file_pattern",
                 self.globs
                     .iter()
                     .cloned()
@@ -142,7 +124,7 @@ impl MDConfig {
                     })
                     .unwrap_or("*.md".to_string()),
             );
-            ini.set_to(section.clone(), "log".into(), self.log_level.clone());
+            sec.set("log", self.log_level.clone());
 
             ini.write_to_file(config)?;
 
