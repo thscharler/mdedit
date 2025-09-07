@@ -2,7 +2,7 @@ use crate::fsys::FileSysStructure;
 use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
-use rat_salsa2::{Control, SalsaContext};
+use rat_salsa::{Control, SalsaContext};
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
 use rat_widget::event::{ct_event, try_flow, ChoiceOutcome, HandleEvent, Popup, Regular};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};

@@ -11,10 +11,10 @@ use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::SendError;
 use dirs::cache_dir;
 use dlg::{file_dlg, msg_dialog};
-use log::{debug, error};
-use rat_salsa2::poll::{PollCrossterm, PollQuit, PollRendered, PollTasks, PollTimers};
-use rat_salsa2::timer::{TimerDef, TimerHandle};
-use rat_salsa2::{run_tui, Control, RunConfig, SalsaContext};
+use log::error;
+use rat_salsa::poll::{PollCrossterm, PollQuit, PollRendered, PollTasks, PollTimers};
+use rat_salsa::timer::{TimerDef, TimerHandle};
+use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
 use rat_theme2::palettes::IMPERIAL;
 use rat_widget::event::{ct_event, try_flow, HandleEvent, MenuOutcome, Popup};
 use rat_widget::file_dialog::FileDialogState;
@@ -30,6 +30,7 @@ use ratatui::prelude::StatefulWidget;
 use ratatui::widgets::Block;
 use std::cmp::max;
 use std::env::args;
+use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::str::from_utf8;
 use std::time::Duration;
@@ -728,16 +729,15 @@ fn show_cheat(ctx: &mut GlobalState) -> Result<Control<MDEvent>, Error> {
 
 fn setup_logging() -> Result<(), Error> {
     if let Some(cache) = cache_dir() {
-        let log_file = PathBuf::from("log.log");
-        // let log_file = if cfg!(debug_assertions) {
-        //     PathBuf::from("log.log")
-        // } else {
-        //     let log_path = cache.join("mdedit");
-        //     if !log_path.exists() {
-        //         create_dir_all(&log_path)?;
-        //     }
-        //     log_path.join("log.log")
-        // };
+        let log_file = if cfg!(debug_assertions) {
+            PathBuf::from("log.log")
+        } else {
+            let log_path = cache.join("mdedit");
+            if !log_path.exists() {
+                create_dir_all(&log_path)?;
+            }
+            log_path.join("log.log")
+        };
 
         _ = fs::remove_file(&log_file);
         fern::Dispatch::new()
