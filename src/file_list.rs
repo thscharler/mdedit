@@ -1,9 +1,8 @@
-use crate::event::MDEvent;
-use crate::fs_structure::FileSysStructure;
+use crate::fsys::FileSysStructure;
+use crate::global::event::MDEvent;
 use crate::global::GlobalState;
-use crate::AppContext;
 use anyhow::Error;
-use rat_salsa::{AppState, AppWidget, Control, RenderContext};
+use rat_salsa2::{Control, SalsaContext};
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
 use rat_widget::event::{ct_event, try_flow, ChoiceOutcome, HandleEvent, Popup, Regular};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
@@ -18,10 +17,6 @@ use ratatui::text::Line;
 use ratatui::widgets::{StatefulWidget, Widget};
 use std::cmp::min;
 use std::path::{Path, PathBuf};
-
-/// File list widget.
-#[derive(Debug, Default)]
-pub struct FileList;
 
 /// File list widget.
 #[derive(Debug)]
@@ -44,99 +39,94 @@ impl Default for FileListState {
     }
 }
 
-impl AppWidget<GlobalState, MDEvent, Error> for FileList {
-    type State = FileListState;
+pub fn render(
+    area: Rect,
+    buf: &mut Buffer,
+    state: &mut FileListState,
+    ctx: &mut GlobalState,
+) -> Result<(), Error> {
+    let theme = &ctx.theme;
+    let scheme = &ctx.scheme();
 
-    fn render(
-        &self,
-        area: Rect,
-        buf: &mut Buffer,
-        state: &mut Self::State,
-        ctx: &mut RenderContext<'_, GlobalState>,
-    ) -> Result<(), Error> {
-        let theme = &ctx.g.theme;
-        let scheme = &ctx.g.scheme();
+    let l_file_list = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Fill(1),
+    ])
+    .split(area);
 
-        let l_file_list = Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Fill(1),
-        ])
-        .split(area);
+    buf.set_style(l_file_list[0], theme.container_base());
 
-        buf.set_style(l_file_list[0], theme.container_base());
+    Line::from(state.sys.name())
+        .style(theme.container_base().fg(scheme.green[2]))
+        .render(l_file_list[1], buf);
 
-        Line::from(state.sys.name())
-            .style(theme.container_base().fg(scheme.green[2]))
-            .render(l_file_list[1], buf);
+    let popup_len = min(l_file_list[4].height, state.sys.dirs_len() as u16);
 
-        let popup_len = min(l_file_list[4].height, state.sys.dirs_len() as u16);
+    let (choice, choice_popup) = Choice::new()
+        .styles(theme.choice_style_tools())
+        .items(
+            state
+                .sys
+                .dirs()
+                .iter()
+                .cloned()
+                .zip(state.sys.display().iter().cloned()),
+        )
+        .popup_scroll(Scroll::new())
+        .popup_placement(Placement::Below)
+        .popup_len(popup_len)
+        .behave_select(ChoiceSelect::MouseClick)
+        .behave_close(ChoiceClose::SingleClick)
+        .into_widgets();
+    choice.render(l_file_list[2], buf, &mut state.file_system);
 
-        let (choice, choice_popup) = Choice::new()
-            .styles(theme.choice_style_tools())
-            .items(
-                state
-                    .sys
-                    .dirs()
-                    .iter()
-                    .cloned()
-                    .zip(state.sys.display().iter().cloned()),
-            )
-            .popup_scroll(Scroll::new())
-            .popup_placement(Placement::Below)
-            .popup_len(popup_len)
-            .behave_select(ChoiceSelect::MouseClick)
-            .behave_close(ChoiceClose::SingleClick)
-            .into_widgets();
-        choice.render(l_file_list[2], buf, &mut state.file_system);
+    buf.set_style(l_file_list[3], theme.container_base());
 
-        buf.set_style(l_file_list[3], theme.container_base());
+    List::default()
+        .scroll(Scroll::new().styles(theme.scroll_style()))
+        .items(state.sys.files().iter().map(|v| {
+            if let Some(name) = v.file_name() {
+                Line::from(name.to_string_lossy().to_string())
+            } else {
+                Line::from("???")
+            }
+        }))
+        .styles(theme.list_style())
+        .render(l_file_list[4], buf, &mut state.file_list);
 
-        List::default()
-            .scroll(Scroll::new().styles(theme.scroll_style()))
-            .items(state.sys.files().iter().map(|v| {
+    // render hover for overlong file names
+    if state.file_list.is_focused() {
+        if let Some(selected) = state.file_list.selected() {
+            let idx = selected - state.file_list.offset();
+
+            let focus_style = theme
+                .list_style()
+                .focus
+                .unwrap_or(revert_style(theme.list_style().style));
+
+            let line = state.sys.files().iter().nth(idx).map(|v| {
                 if let Some(name) = v.file_name() {
-                    Line::from(name.to_string_lossy().to_string())
+                    Line::from(name.to_string_lossy().to_string()).style(focus_style)
                 } else {
-                    Line::from("???")
+                    Line::from("???").style(focus_style)
                 }
-            }))
-            .styles(theme.list_style())
-            .render(l_file_list[4], buf, &mut state.file_list);
+            });
+            if let Some(line) = line {
+                let mut area = state.file_list.row_areas[idx];
+                area.width = line.width() as u16 + 1;
 
-        // render hover for overlong file names
-        if state.file_list.is_focused() {
-            if let Some(selected) = state.file_list.selected() {
-                let idx = selected - state.file_list.offset();
-
-                let focus_style = theme
-                    .list_style()
-                    .focus
-                    .unwrap_or(revert_style(theme.list_style().style));
-
-                let line = state.sys.files().iter().nth(idx).map(|v| {
-                    if let Some(name) = v.file_name() {
-                        Line::from(name.to_string_lossy().to_string()).style(focus_style)
-                    } else {
-                        Line::from("???").style(focus_style)
-                    }
-                });
-                if let Some(line) = line {
-                    let mut area = state.file_list.row_areas[idx];
-                    area.width = line.width() as u16 + 1;
-
-                    line.style(focus_style)
-                        .render(area, ctx.g.hover.buffer_mut(area));
-                }
+                line.style(focus_style)
+                    .render(area, ctx.hover.buffer_mut(area));
             }
         }
-
-        choice_popup.render(l_file_list[2], buf, &mut state.file_system);
-
-        Ok(())
     }
+
+    choice_popup.render(l_file_list[2], buf, &mut state.file_system);
+
+    Ok(())
 }
 
 impl HasFocus for FileListState {
@@ -156,82 +146,78 @@ impl HasFocus for FileListState {
     }
 }
 
-impl AppState<GlobalState, MDEvent, Error> for FileListState {
-    fn init(&mut self, _ctx: &mut AppContext<'_>) -> Result<(), Error> {
-        if !self.sys.files_is_empty() {
-            self.file_system
-                .set_value(self.sys.files_dir().to_path_buf());
-            self.file_list.select(Some(0));
-        }
-        Ok(())
+pub fn init(state: &mut FileListState, _ctx: &mut GlobalState) -> Result<(), Error> {
+    if !state.sys.files_is_empty() {
+        state
+            .file_system
+            .set_value(state.sys.files_dir().to_path_buf());
+        state.file_list.select(Some(0));
     }
+    Ok(())
+}
 
-    fn event(
-        &mut self,
-        event: &MDEvent,
-        ctx: &mut AppContext<'_>,
-    ) -> Result<Control<MDEvent>, Error> {
-        match event {
-            MDEvent::Event(event) => {
-                try_flow!(match self.file_system.handle(event, Popup) {
-                    ChoiceOutcome::Value => {
-                        if matches!(event, ct_event!(keycode press Enter)) {
-                            ctx.focus().next();
-                        }
-                        let sel_path = self.file_system.value();
-                        self.load_current(&sel_path, &ctx.g.cfg.globs)?;
-                        Control::Changed
-                    }
-                    ChoiceOutcome::Changed => {
-                        if matches!(event, ct_event!(keycode press Enter)) {
-                            ctx.focus().next();
-                        }
-                        Control::Changed
-                    }
-                    r => r.into(),
-                });
-
-                if self.file_list.is_focused() {
-                    try_flow!(match event {
-                        ct_event!(keycode press Enter) => {
-                            if let Some(row) = self.file_list.selected() {
-                                Control::Event(MDEvent::SelectOrOpen(self.sys.file(row).into()))
-                            } else {
-                                Control::Continue
-                            }
-                        }
-                        ct_event!(key press '+') => {
-                            if let Some(row) = self.file_list.selected() {
-                                Control::Event(MDEvent::SelectOrOpenSplit(
-                                    self.sys.file(row).into(),
-                                ))
-                            } else {
-                                Control::Continue
-                            }
-                        }
-                        _ => Control::Continue,
-                    });
+pub fn event(
+    state: &mut FileListState,
+    event: &MDEvent,
+    ctx: &mut GlobalState,
+) -> Result<Control<MDEvent>, Error> {
+    if let MDEvent::Event(event) = event {
+        try_flow!(match state.file_system.handle(event, Popup) {
+            ChoiceOutcome::Value => {
+                if matches!(event, ct_event!(keycode press Enter)) {
+                    ctx.focus().next();
                 }
-                try_flow!(match event {
-                    ct_event!(mouse any for m)
-                        if self.file_list.mouse.doubleclick(self.file_list.area, m) =>
-                    {
-                        if let Some(row) = self.file_list.row_at_clicked((m.column, m.row)) {
-                            Control::Event(MDEvent::SelectOrOpen(self.sys.file(row).into()))
-                        } else {
-                            Control::Continue
-                        }
-                    }
-
-                    _ => Control::Continue,
-                });
-
-                try_flow!(self.file_list.handle(event, Regular));
-
-                Ok(Control::Continue)
+                let sel_path = state.file_system.value();
+                state.load_current(&sel_path, &ctx.cfg.globs)?;
+                Control::Changed
             }
-            _ => Ok(Control::Continue),
+            ChoiceOutcome::Changed => {
+                if matches!(event, ct_event!(keycode press Enter)) {
+                    ctx.focus().next();
+                }
+                Control::Changed
+            }
+            r => r.into(),
+        });
+
+        if state.file_list.is_focused() {
+            try_flow!(match event {
+                ct_event!(keycode press Enter) => {
+                    if let Some(row) = state.file_list.selected() {
+                        Control::Event(MDEvent::SelectOrOpen(state.sys.file(row).into()))
+                    } else {
+                        Control::Continue
+                    }
+                }
+                ct_event!(key press '+') => {
+                    if let Some(row) = state.file_list.selected() {
+                        Control::Event(MDEvent::SelectOrOpenSplit(state.sys.file(row).into()))
+                    } else {
+                        Control::Continue
+                    }
+                }
+                _ => Control::Continue,
+            });
         }
+        try_flow!(match event {
+            ct_event!(mouse any for m)
+                if state.file_list.mouse.doubleclick(state.file_list.area, m) =>
+            {
+                if let Some(row) = state.file_list.row_at_clicked((m.column, m.row)) {
+                    Control::Event(MDEvent::SelectOrOpen(state.sys.file(row).into()))
+                } else {
+                    Control::Continue
+                }
+            }
+
+            _ => Control::Continue,
+        });
+
+        try_flow!(state.file_list.handle(event, Regular));
+
+        Ok(Control::Continue)
+    } else {
+        Ok(Control::Continue)
     }
 }
 
@@ -322,7 +308,7 @@ impl FileListState {
     }
 
     /// Focus the files list.
-    pub fn focus_files(&self, ctx: &AppContext<'_>) -> bool {
+    pub fn focus_files(&self, ctx: &GlobalState) -> bool {
         if !self.file_list.is_focused() {
             ctx.focus().focus(&self.file_list);
             true
@@ -332,7 +318,7 @@ impl FileListState {
     }
 
     /// Focus the fs-tree.
-    pub fn focus_tree(&mut self, ctx: &AppContext<'_>) -> bool {
+    pub fn focus_tree(&mut self, ctx: &GlobalState) -> bool {
         if !self.file_system.is_focused() {
             self.file_system.set_popup_active(true);
             ctx.focus().focus(&self.file_system);

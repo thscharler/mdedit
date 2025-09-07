@@ -1,3 +1,10 @@
+# 0.7.0
+
+* UI improvements.
+* stores last session.
+* change to rat-salsa 2.0
+* text-wrapping
+
 # 0.6.3
 
 * wrong Cargo.toml

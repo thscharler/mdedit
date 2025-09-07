@@ -1,22 +1,22 @@
 use crate::doc_type::{DocType, DocTypes};
-use crate::event::MDEvent;
+use crate::global::event::MDEvent;
 use crate::global::GlobalState;
-use crate::AppContext;
 use anyhow::{anyhow, Error};
-use log::warn;
+use log::{debug, warn};
 use pulldown_cmark::{Event, Options, Parser, Tag};
 use rat_markdown::styles::MDStyle;
 use rat_markdown::MarkDown;
-use rat_salsa::timer::{TimerDef, TimerHandle};
-use rat_salsa::{AppState, AppWidget, Control, RenderContext};
+use rat_salsa2::timer::{TimerDef, TimerHandle};
+use rat_salsa2::{Control, SalsaContext};
 use rat_widget::event::util::MouseFlags;
-use rat_widget::event::{ct_event, ConsumedEvent, HandleEvent, TextOutcome};
+use rat_widget::event::{ct_event, try_flow, ConsumedEvent, HandleEvent, TextOutcome};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
 use rat_widget::line_number::{LineNumberState, LineNumbers};
 use rat_widget::scrolled::Scroll;
 use rat_widget::text::clipboard::{Clipboard, ClipboardError};
 use rat_widget::text::HasScreenCursor;
 use rat_widget::textarea::{TextArea, TextAreaState, TextWrap};
+use rat_widget::util::fill_buf_area;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Style, Stylize};
@@ -29,12 +29,6 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
-#[derive(Debug, Default, Clone)]
-pub struct MDFile {
-    // vary start margin of the scrollbar
-    start_margin: u16,
-}
-
 #[derive(Debug)]
 pub struct MDFileState {
     pub path: PathBuf,
@@ -42,90 +36,62 @@ pub struct MDFileState {
     pub doc_type: DocTypes,
     pub edit: TextAreaState,
     pub edit_mouse: MouseFlags,
+    pub show_linenr: bool,
     pub linenr: LineNumberState,
     pub parse_timer: Option<TimerHandle>,
 }
 
-impl MDFile {
-    pub fn new() -> Self {
-        Self::default()
-    }
+pub fn render(
+    start_margin: u16,
+    area: Rect,
+    buf: &mut Buffer,
+    state: &mut MDFileState,
+    ctx: &mut GlobalState,
+) -> Result<(), Error> {
+    let theme = &ctx.theme;
 
-    pub fn start_margin(mut self, start_margin: u16) -> Self {
-        self.start_margin = start_margin;
-        self
-    }
-}
+    let ln_width = if state.show_linenr {
+        LineNumbers::width_for(state.edit.vertical_offset(), 0, (0, 0), 0)
+    } else {
+        1
+    };
 
-impl Clone for MDFileState {
-    fn clone(&self) -> Self {
-        let mut s = Self {
-            path: self.path.clone(),
-            changed: self.changed,
-            doc_type: self.doc_type,
-            edit: self.edit.clone(),
-            edit_mouse: self.edit_mouse.clone(),
-            linenr: self.linenr.clone(),
-            parse_timer: None,
-        };
+    let text_area = Rect::new(
+        area.x + ln_width,
+        area.y,
+        area.width.saturating_sub(ln_width),
+        area.height,
+    );
 
-        // todo: cleanup
-        let nnn = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("fine")
-            .as_millis()
-            % 86400;
-        s.edit.focus = FocusFlag::named(format!("{} {}", s.edit.focus.name(), nnn).as_str());
+    TextArea::new()
+        .block(
+            Block::new()
+                .border_type(BorderType::Rounded)
+                .borders(Borders::RIGHT),
+        )
+        .vscroll(Scroll::new().start_margin(start_margin))
+        .styles(theme.textarea_style_doc())
+        .text_style_map(text_style(ctx))
+        .render(text_area, buf, &mut state.edit);
 
-        s
-    }
-}
-
-impl AppWidget<GlobalState, MDEvent, Error> for MDFile {
-    type State = MDFileState;
-
-    fn render(
-        &self,
-        area: Rect,
-        buf: &mut Buffer,
-        state: &mut Self::State,
-        ctx: &mut RenderContext<'_, GlobalState>,
-    ) -> Result<(), Error> {
-        let theme = &ctx.g.theme;
-
-        let ln_width = LineNumbers::width_for(state.edit.vertical_offset(), 0, (0, 0), 0);
-
-        let text_area = Rect::new(
-            area.x + ln_width,
-            area.y,
-            area.width.saturating_sub(ln_width),
-            area.height,
-        );
-        TextArea::new()
-            .block(
-                Block::new()
-                    .border_type(BorderType::Rounded)
-                    .borders(Borders::RIGHT),
-            )
-            .vscroll(Scroll::new().start_margin(self.start_margin))
-            .styles(theme.textarea_style_doc())
-            .text_style_map(text_style(ctx))
-            .render(text_area, buf, &mut state.edit);
-
+    if state.show_linenr {
         let line_nr_area = Rect::new(area.x, area.y, ln_width, area.height);
         LineNumbers::new()
             .with_textarea(&state.edit)
             .styles(theme.line_nr_style_doc())
             .render(line_nr_area, buf, &mut state.linenr);
-
-        ctx.set_screen_cursor(state.edit.screen_cursor());
-
-        Ok(())
+    } else {
+        let line_nr_area = Rect::new(area.x, area.y, ln_width, area.height);
+        fill_buf_area(buf, line_nr_area, " ", theme.doc_base());
     }
+
+    ctx.set_screen_cursor(state.edit.screen_cursor());
+
+    Ok(())
 }
 
-fn text_style(ctx: &RenderContext<'_, GlobalState>) -> HashMap<usize, Style> {
-    let sc = ctx.g.scheme();
+fn text_style(ctx: &GlobalState) -> HashMap<usize, Style> {
+    let sc = ctx.scheme();
     let sty = |c: Color| Style::new().fg(c);
 
     let mut map = HashMap::new();
@@ -178,6 +144,31 @@ fn text_style(ctx: &RenderContext<'_, GlobalState>) -> HashMap<usize, Style> {
     map
 }
 
+impl Clone for MDFileState {
+    fn clone(&self) -> Self {
+        let mut s = Self {
+            path: self.path.clone(),
+            changed: self.changed,
+            doc_type: self.doc_type,
+            edit: self.edit.clone(),
+            edit_mouse: self.edit_mouse.clone(),
+            show_linenr: self.show_linenr,
+            linenr: self.linenr.clone(),
+            parse_timer: None,
+        };
+
+        // todo: cleanup
+        let nnn = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("fine")
+            .as_millis()
+            % 86400;
+        s.edit.focus = FocusFlag::named(format!("{} {}", s.edit.focus.name(), nnn).as_str());
+
+        s
+    }
+}
+
 impl HasFocus for MDFileState {
     fn build(&self, builder: &mut FocusBuilder) {
         builder.leaf_widget(self);
@@ -226,118 +217,120 @@ impl Clipboard for CliClipboard {
     }
 }
 
-impl AppState<GlobalState, MDEvent, Error> for MDFileState {
-    fn event(
-        &mut self,
-        event: &MDEvent,
-        ctx: &mut AppContext<'_>,
-    ) -> Result<Control<MDEvent>, Error> {
-        let r = match event {
-            MDEvent::TimeOut(event) => {
-                if self.parse_timer == Some(event.handle) {
-                    self.doc_type.parse(&mut self.edit);
-                    Control::Changed
-                } else {
-                    Control::Continue
+pub fn event(
+    event: &MDEvent,
+    state: &mut MDFileState,
+    ctx: &mut GlobalState,
+) -> Result<Control<MDEvent>, Error> {
+    match event {
+        MDEvent::TimeOut(event) => {
+            try_flow!(if state.parse_timer == Some(event.handle) {
+                state.doc_type.parse(&mut state.edit);
+                Control::Changed
+            } else {
+                Control::Continue
+            });
+        }
+        MDEvent::Event(event) => {
+            // click click
+            try_flow!(match event {
+                ct_event!(mouse any for m) if state.edit_mouse.doubleclick(state.edit.inner, m) => {
+                    state.follow_link(ctx)?
                 }
-            }
-            MDEvent::Event(event) => {
-                match event {
-                    ct_event!(mouse any for m)
-                        if self.edit_mouse.doubleclick(self.edit.inner, m) =>
-                    {
-                        match self.follow_link(ctx) {
-                            Ok(md @ Control::Event(MDEvent::SelectOrOpen(_))) => ctx.queue(md),
-                            _ => {}
-                        }
-                    }
-                    _ => {}
-                }
-                // call markdown event-handling instead of regular.
-                let mut r = match self.edit.handle(event, MarkDown::new(ctx.g.cfg.text_width)) {
+                _ => Control::Continue,
+            });
+            // call markdown event-handling instead of regular.
+            try_flow!(
+                match state.edit.handle(event, MarkDown::new(ctx.cfg.text_width)) {
                     TextOutcome::TextChanged => {
-                        self.update_cursor_pos(ctx);
-                        self.text_changed(ctx)
+                        state.update_cursor_pos(ctx);
+                        state.text_changed(ctx)
                     }
                     TextOutcome::Changed => {
-                        self.update_cursor_pos(ctx);
+                        state.update_cursor_pos(ctx);
                         Control::Changed
                     }
                     r => r.into(),
-                };
-                if self.is_focused() {
-                    r = r.or_else_try(|| match event {
-                        ct_event!(key press CONTROL-'l') => {
-                            self.follow_link(ctx) //
-                        }
-                        ct_event!(keycode press F(8)) => {
-                            if self.edit.is_focused() {
-                                self.reformat(false, ctx)
-                            } else {
-                                Ok(Control::Continue)
-                            }
-                        }
-                        ct_event!(keycode press F(7)) => {
-                            if self.edit.is_focused() {
-                                self.reformat(true, ctx)
-                            } else {
-                                Ok(Control::Continue)
-                            }
-                        }
-                        ct_event!(key press CONTROL-'p') => {
-                            if self.edit.is_focused() {
-                                self.doc_type.log_parser(&self.edit);
-                                Ok(Control::Continue)
-                            } else {
-                                Ok(Control::Continue)
-                            }
-                        }
-                        ct_event!(key press ALT-'w') => match self.edit.text_wrap() {
-                            TextWrap::Shift => {
-                                self.edit.set_text_wrap(TextWrap::Word(6));
-                                Ok(Control::Changed)
-                            }
-                            TextWrap::Hard | TextWrap::Word(_) => {
-                                self.edit.set_text_wrap(TextWrap::Shift);
-                                Ok(Control::Changed)
-                            }
-                            _ => {
-                                self.edit.set_text_wrap(TextWrap::Word(6));
-                                Ok(Control::Changed)
-                            }
-                        },
-                        ct_event!(key press ALT-'b') => {
-                            self.edit.set_wrap_ctrl(!self.edit.wrap_ctrl());
-                            Ok(Control::Changed)
-                        }
-                        _ => Ok(Control::Continue),
-                    })?;
                 }
-                r
-            }
-            MDEvent::MenuFormat => {
-                if self.edit.is_focused() {
-                    self.reformat(false, ctx)?
-                } else {
-                    Control::Continue
-                }
-            }
-            MDEvent::MenuFormatEq => {
-                if self.edit.is_focused() {
-                    self.reformat(true, ctx)?
-                } else {
-                    Control::Continue
-                }
-            }
-            MDEvent::CfgShowCtrl => {
-                self.edit.set_show_ctrl(ctx.g.cfg.show_ctrl);
-                Control::Changed
-            }
-            _ => Control::Continue,
-        };
+            );
 
-        Ok(r)
+            if state.is_focused() {
+                try_flow!(match event {
+                    ct_event!(key press CONTROL-'l') => {
+                        state.follow_link(ctx)? //
+                    }
+                    ct_event!(keycode press F(8)) => {
+                        if state.edit.is_focused() {
+                            state.reformat(false, ctx)?
+                        } else {
+                            Control::Continue
+                        }
+                    }
+                    ct_event!(keycode press F(7)) => {
+                        if state.edit.is_focused() {
+                            state.reformat(true, ctx)?
+                        } else {
+                            Control::Continue
+                        }
+                    }
+                    ct_event!(key press CONTROL-'p') => {
+                        if state.edit.is_focused() {
+                            state.doc_type.log_parser(&state.edit);
+                            Control::Continue
+                        } else {
+                            Control::Continue
+                        }
+                    }
+                    _ => Control::Continue,
+                });
+            }
+        }
+        MDEvent::MenuFormat => {
+            try_flow!(if state.edit.is_focused() {
+                state.reformat(false, ctx)?
+            } else {
+                Control::Continue
+            });
+        }
+        MDEvent::MenuFormatEq => {
+            try_flow!(if state.edit.is_focused() {
+                state.reformat(true, ctx)?
+            } else {
+                Control::Continue
+            });
+        }
+        MDEvent::CfgShowCtrl => {
+            try_flow!({
+                state.edit.set_show_ctrl(ctx.cfg.show_ctrl);
+                Control::Changed
+            });
+        }
+        MDEvent::CfgShowBreak => {
+            try_flow!({
+                state.edit.set_wrap_ctrl(ctx.cfg.show_break);
+                Control::Changed
+            });
+        }
+        MDEvent::CfgShowLinenr => {
+            try_flow!({
+                state.show_linenr = !state.show_linenr;
+                Control::Changed
+            });
+        }
+        MDEvent::CfgWrapText => {
+            try_flow!({
+                state.edit.set_text_wrap(if ctx.cfg.wrap_text {
+                    TextWrap::Word(8)
+                } else {
+                    TextWrap::Shift
+                });
+                Control::Changed
+            });
+        }
+        _ => {}
     }
+
+    Ok(Control::Continue)
 }
 
 impl MDFileState {
@@ -345,11 +338,11 @@ impl MDFileState {
     fn reformat(
         &mut self,
         eq_width: bool,
-        ctx: &mut AppContext<'_>,
+        ctx: &mut GlobalState,
     ) -> Result<Control<MDEvent>, Error> {
         let mut r: Control<MDEvent> = self
             .doc_type
-            .format(&mut self.edit, ctx.g.cfg.text_width, eq_width)
+            .format(&mut self.edit, ctx.cfg.text_width, eq_width)
             .into();
         r = r.and_then(|| {
             self.update_cursor_pos(ctx);
@@ -359,7 +352,7 @@ impl MDFileState {
     }
 
     /// Follow the link at the cursor.
-    fn follow_link(&self, ctx: &mut AppContext<'_>) -> Result<Control<MDEvent>, Error> {
+    fn follow_link(&mut self, ctx: &mut GlobalState) -> Result<Control<MDEvent>, Error> {
         let pos = self.edit.byte_at(self.edit.cursor());
         let Some(link_range) = self.edit.style_match(pos.start, MDStyle::Link.into()) else {
             return Ok(Control::Continue);
@@ -399,7 +392,7 @@ impl MDFileState {
     }
 
     // New editor with fresh file.
-    pub fn new_file(path: &Path, ctx: &mut AppContext<'_>) -> Self {
+    pub fn new_file(path: &Path, ctx: &mut GlobalState) -> MDFileState {
         let mut path = path.to_path_buf();
         if path.extension().is_none() {
             path.set_extension("md");
@@ -414,22 +407,29 @@ impl MDFileState {
                 .as_ref(),
         );
         edit.set_clipboard(Some(CliClipboard::default()));
-        edit.set_show_ctrl(ctx.g.cfg.show_ctrl);
+        edit.set_show_ctrl(ctx.cfg.show_ctrl);
+        edit.set_wrap_ctrl(ctx.cfg.show_break);
+        edit.set_text_wrap(if ctx.cfg.wrap_text {
+            TextWrap::Word(8)
+        } else {
+            TextWrap::Shift
+        });
         edit.set_tab_width(4);
 
-        Self {
+        MDFileState {
             path: path.clone(),
             changed: Default::default(),
             doc_type,
             edit,
             edit_mouse: Default::default(),
+            show_linenr: ctx.cfg.show_linenr,
             linenr: Default::default(),
             parse_timer: None,
         }
     }
 
     // New editor with existing file.
-    pub fn open_file(path: &Path, ctx: &mut AppContext<'_>) -> Result<Self, Error> {
+    pub fn open_file(path: &Path, ctx: &mut GlobalState) -> Result<MDFileState, Error> {
         let path = PathBuf::from(path);
 
         let doc_type = Self::doc_type(&path);
@@ -443,15 +443,22 @@ impl MDFileState {
         edit.set_clipboard(Some(CliClipboard::default()));
         let t = fs::read_to_string(&path)?;
         edit.set_text(t.as_str());
-        edit.set_show_ctrl(ctx.g.cfg.show_ctrl);
+        edit.set_show_ctrl(ctx.cfg.show_ctrl);
+        edit.set_wrap_ctrl(ctx.cfg.show_break);
+        edit.set_text_wrap(if ctx.cfg.wrap_text {
+            TextWrap::Word(8)
+        } else {
+            TextWrap::Shift
+        });
         edit.set_tab_width(4);
 
-        Ok(Self {
+        Ok(MDFileState {
             path: path.clone(),
             changed: Default::default(),
             doc_type,
             edit,
             edit_mouse: Default::default(),
+            show_linenr: ctx.cfg.show_linenr,
             linenr: Default::default(),
             parse_timer: Some(
                 ctx.add_timer(TimerDef::new().next(Instant::now() + Duration::from_millis(0))),
@@ -493,7 +500,7 @@ impl MDFileState {
     }
 
     // Update cursor info
-    pub fn update_cursor_pos(&self, ctx: &mut AppContext<'_>) {
+    pub fn update_cursor_pos(&mut self, ctx: &mut GlobalState) {
         // update cursor / selection info
         if self.edit.is_focused() {
             let cursor = self.edit.cursor();
@@ -511,7 +518,7 @@ impl MDFileState {
     }
 
     // Flag any text-changes.
-    pub fn text_changed(&mut self, ctx: &mut AppContext<'_>) -> Control<MDEvent> {
+    pub fn text_changed(&mut self, ctx: &mut GlobalState) -> Control<MDEvent> {
         self.changed = self.edit.undo_buffer().expect("undo").open_undo() > 0;
         // send sync
         ctx.queue(Control::Event(MDEvent::SyncEdit));
