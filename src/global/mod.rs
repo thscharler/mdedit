@@ -17,7 +17,7 @@ pub struct GlobalState {
     pub cfg: MDConfig,
     pub theme: DarkTheme,
     pub hover: HoverState,
-    pub dialogs: DialogStack<GlobalState, MDEvent, Error>,
+    pub dialogs: DialogStack<MDEvent, GlobalState, Error>,
 }
 
 impl SalsaContext<MDEvent, Error> for GlobalState {

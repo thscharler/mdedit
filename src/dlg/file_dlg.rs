@@ -1,7 +1,7 @@
 use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
-use rat_dialog::StackControl;
+use rat_dialog::DialogControl;
 use rat_salsa::SalsaContext;
 use rat_widget::event::{Dialog, FileOutcome, HandleEvent, Outcome};
 use rat_widget::file_dialog::{FileDialog, FileDialogState};
@@ -17,7 +17,7 @@ pub fn render(
     buf: &mut Buffer,
     state: &mut (dyn Any + 'static),
     ctx: &mut GlobalState,
-) -> Result<(), Error> {
+) {
     let state = state.downcast_mut().expect("dialog-state");
 
     let area = layout_middle(
@@ -33,28 +33,26 @@ pub fn render(
         .render(area, buf, state);
 
     ctx.set_screen_cursor(state.screen_cursor());
-
-    Ok(())
 }
 
 pub fn event_new(
     event: &MDEvent,
     state: &mut dyn Any,
     ctx: &mut GlobalState,
-) -> Result<StackControl<MDEvent>, Error> {
+) -> Result<DialogControl<MDEvent>, Error> {
     let state = state
         .downcast_mut::<FileDialogState>()
         .expect("dialog-state");
     match event {
         MDEvent::Event(event) => match state.handle(event, Dialog)? {
-            FileOutcome::Cancel => Ok(StackControl::Pop),
+            FileOutcome::Cancel => Ok(DialogControl::Close(None)),
             FileOutcome::Ok(p) => {
                 ctx.queue_event(MDEvent::New(p));
-                Ok(StackControl::Pop)
+                Ok(DialogControl::Close(None))
             }
             r => Ok(Outcome::from(r).into()),
         },
-        _ => Ok(StackControl::Continue),
+        _ => Ok(DialogControl::Continue),
     }
 }
 
@@ -62,20 +60,20 @@ pub fn event_open(
     event: &MDEvent,
     state: &mut dyn Any,
     ctx: &mut GlobalState,
-) -> Result<StackControl<MDEvent>, Error> {
+) -> Result<DialogControl<MDEvent>, Error> {
     let state = state
         .downcast_mut::<FileDialogState>()
         .expect("dialog-state");
     match event {
         MDEvent::Event(event) => match state.handle(event, Dialog)? {
-            FileOutcome::Cancel => Ok(StackControl::Pop),
+            FileOutcome::Cancel => Ok(DialogControl::Close(None)),
             FileOutcome::Ok(p) => {
                 ctx.queue_event(MDEvent::Open(p));
-                Ok(StackControl::Pop)
+                Ok(DialogControl::Close(None))
             }
             r => Ok(Outcome::from(r).into()),
         },
-        _ => Ok(StackControl::Continue),
+        _ => Ok(DialogControl::Continue),
     }
 }
 
@@ -83,19 +81,19 @@ pub fn event_save_as(
     event: &MDEvent,
     state: &mut dyn Any,
     ctx: &mut GlobalState,
-) -> Result<StackControl<MDEvent>, Error> {
+) -> Result<DialogControl<MDEvent>, Error> {
     let state = state
         .downcast_mut::<FileDialogState>()
         .expect("dialog-state");
     match event {
         MDEvent::Event(event) => match state.handle(event, Dialog)? {
-            FileOutcome::Cancel => Ok(StackControl::Pop),
+            FileOutcome::Cancel => Ok(DialogControl::Close(None)),
             FileOutcome::Ok(p) => {
                 ctx.queue_event(MDEvent::SaveAs(p));
-                Ok(StackControl::Pop)
+                Ok(DialogControl::Close(None))
             }
             r => Ok(Outcome::from(r).into()),
         },
-        _ => Ok(StackControl::Continue),
+        _ => Ok(DialogControl::Continue),
     }
 }

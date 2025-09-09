@@ -3,7 +3,7 @@ use crate::global::theme::dark_themes;
 use crate::global::GlobalState;
 use anyhow::Error;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use rat_dialog::StackControl;
+use rat_dialog::DialogControl;
 use rat_salsa::SalsaContext;
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
@@ -31,12 +31,7 @@ pub struct ConfigDialogState {
     cancel_button: ButtonState,
 }
 
-pub fn render(
-    area: Rect,
-    buf: &mut Buffer,
-    state: &mut dyn Any,
-    ctx: &mut GlobalState,
-) -> Result<(), Error> {
+pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut GlobalState) {
     let state = state.downcast_mut::<ConfigDialogState>().expect("state");
 
     let cfg_area = layout_middle(
@@ -140,8 +135,6 @@ pub fn render(
     Button::new("Ok")
         .styles(ctx.theme.button_style()) //
         .render(l2[1], buf, &mut state.ok_button);
-
-    Ok(())
 }
 
 impl_has_focus!(theme, text_width, globs, ok_button, cancel_button for ConfigDialogState);
@@ -150,7 +143,7 @@ pub fn event(
     event: &MDEvent,
     state: &mut dyn Any,
     ctx: &mut GlobalState,
-) -> Result<StackControl<MDEvent>, Error> {
+) -> Result<DialogControl<MDEvent>, Error> {
     let state = state.downcast_mut::<ConfigDialogState>().expect("state");
 
     if let MDEvent::Event(event) = event {
@@ -170,7 +163,7 @@ pub fn event(
                         .expect("theme");
 
                     ctx.theme = theme;
-                    StackControl::Changed
+                    DialogControl::Changed
                 }
                 r => r.into(),
             });
@@ -192,9 +185,9 @@ pub fn event(
                 r => r.into(),
             });
 
-            Ok(StackControl::Unchanged)
+            Ok(DialogControl::Unchanged)
         }
-        _ => Ok(StackControl::Continue),
+        _ => Ok(DialogControl::Continue),
     }
 }
 
@@ -221,7 +214,7 @@ impl ConfigDialogState {
         Ok(s)
     }
 
-    fn cancel(&mut self, ctx: &mut GlobalState) -> Result<StackControl<MDEvent>, Error> {
+    fn cancel(&mut self, ctx: &mut GlobalState) -> Result<DialogControl<MDEvent>, Error> {
         let theme = dark_themes()
             .iter()
             .find(|v| v.name() == ctx.cfg.theme)
@@ -229,10 +222,10 @@ impl ConfigDialogState {
             .expect("theme");
         ctx.theme = theme;
 
-        Ok(StackControl::Pop)
+        Ok(DialogControl::Close(None))
     }
 
-    fn save(&mut self, ctx: &mut GlobalState) -> Result<StackControl<MDEvent>, Error> {
+    fn save(&mut self, ctx: &mut GlobalState) -> Result<DialogControl<MDEvent>, Error> {
         let cfg = &mut ctx.cfg;
         cfg.theme = self.theme.value();
         cfg.text_width = self.text_width.value()?;
@@ -250,6 +243,6 @@ impl ConfigDialogState {
             .collect();
 
         ctx.queue_event(MDEvent::StoreConfig);
-        Ok(StackControl::Pop)
+        Ok(DialogControl::Close(None))
     }
 }

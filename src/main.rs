@@ -240,7 +240,7 @@ pub fn render(
     // menu popups
     menu_popup.render(s[0], buf, &mut state.menu);
     // dialogs
-    ctx.dialogs.clone().render(r[0], buf, ctx)?;
+    ctx.dialogs.clone().render(r[0], buf, ctx);
 
     Ok(())
 }

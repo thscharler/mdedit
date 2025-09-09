@@ -1,7 +1,7 @@
 use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
-use rat_dialog::StackControl;
+use rat_dialog::DialogControl;
 use rat_widget::event::{Dialog, HandleEvent, Outcome};
 use rat_widget::layout::layout_middle;
 use rat_widget::msgdialog::{MsgDialog, MsgDialogState};
@@ -16,7 +16,7 @@ pub fn render(
     buf: &mut Buffer,
     state: &mut (dyn Any + 'static),
     ctx: &mut GlobalState,
-) -> Result<(), Error> {
+) {
     let state = state.downcast_mut().expect("msgdialog-state");
 
     let area = layout_middle(
@@ -30,8 +30,6 @@ pub fn render(
     MsgDialog::new()
         .styles(ctx.theme.msg_dialog_style())
         .render(area, buf, state);
-
-    Ok(())
 }
 
 pub fn render_info(
@@ -39,7 +37,7 @@ pub fn render_info(
     buf: &mut Buffer,
     state: &mut (dyn Any + 'static),
     ctx: &mut GlobalState,
-) -> Result<(), Error> {
+) {
     let state = state
         .downcast_mut::<MsgDialogState>()
         .expect("dialog-state");
@@ -58,14 +56,13 @@ pub fn render_info(
         )
         .styles(ctx.theme.msg_dialog_style())
         .render(area, buf, state);
-    Ok(())
 }
 
 pub fn event(
     event: &MDEvent,
     state: &mut dyn Any,
     _ctx: &mut GlobalState,
-) -> Result<StackControl<MDEvent>, Error> {
+) -> Result<DialogControl<MDEvent>, Error> {
     let r = if let MDEvent::Event(event) = event {
         let state = state
             .downcast_mut::<MsgDialogState>()
@@ -74,15 +71,15 @@ pub fn event(
         match state.handle(event, Dialog) {
             Outcome::Changed => {
                 if !state.active() {
-                    StackControl::Pop
+                    DialogControl::Close(None)
                 } else {
-                    StackControl::Changed
+                    DialogControl::Changed
                 }
             }
             r => r.into(),
         }
     } else {
-        StackControl::Continue
+        DialogControl::Continue
     };
     Ok(r)
 }

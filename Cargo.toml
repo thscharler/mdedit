@@ -1,6 +1,6 @@
 [package]
 name = "mdedit"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 description = "markdown editor with ratatui and rat-salsa"
 license = "MIT/Apache-2.0"
@@ -27,7 +27,7 @@ toml = "0.8"
 crossbeam = "0.8"
 sys-locale = "0.3"
 
-rat-salsa = { version = "2.0", path = "../rat-salsa/rat-salsa" }
+rat-salsa = { version = "2.1", path = "../rat-salsa/rat-salsa" }
 rat-dialog = { version = "0.3", path = "../rat-salsa/rat-dialog" }
 rat-widget = { version = "1.1", path = "../rat-salsa/rat-widget", features = ["user_directories", "unstable-widget-ref"] }
 rat-theme2 = { version = "1.1", path = "../rat-salsa/rat-theme2" }

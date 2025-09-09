@@ -1,3 +1,7 @@
+# 0.8.0
+
+* update to rat-salsa 2.1.0
+
 # 0.7.0
 
 * UI improvements.
