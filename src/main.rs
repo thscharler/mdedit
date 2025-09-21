@@ -499,7 +499,8 @@ fn store_config(state: &mut Scenery, ctx: &mut GlobalState) -> Control<MDEvent> 
 
 fn show_message(msg: &str, ctx: &mut GlobalState) -> Control<MDEvent> {
     if let Some(n) = ctx.dialogs.first::<MsgDialogState>() {
-        ctx.dialogs.apply::<MsgDialogState, _>(n, |v| v.append(msg));
+        let dlg = ctx.dialogs.get::<MsgDialogState>(n);
+        dlg.append(msg);
     } else {
         let state = MsgDialogState::new_active("Information", msg);
         ctx.dialogs

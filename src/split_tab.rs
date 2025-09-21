@@ -226,7 +226,7 @@ pub fn event(
         }
     } else {
         // application events go everywhere
-        try_flow! {
+        try_flow!({
             let mut r = Control::Continue;
             for tab in &mut state.split_tab_file {
                 for ed in tab {
@@ -234,7 +234,7 @@ pub fn event(
                 }
             }
             r
-        }
+        })
     }
 
     Ok(Control::Continue)
