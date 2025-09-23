@@ -42,7 +42,7 @@ impl GlobalState {
     }
 
     pub fn scheme(&self) -> &Palette {
-        &self.theme.scheme()
+        &self.theme.palette()
     }
 }
 

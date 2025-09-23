@@ -47,8 +47,8 @@ pub fn render_info(
             Block::bordered()
                 .style(
                     Style::default() //
-                        .fg(ctx.theme.scheme().white[2])
-                        .bg(ctx.theme.scheme().deepblue[0]),
+                        .fg(ctx.theme.palette().white[2])
+                        .bg(ctx.theme.palette().deepblue[0]),
                 )
                 .border_type(BorderType::Rounded)
                 .title_style(Style::new().fg(ctx.scheme().bluegreen[0]))
