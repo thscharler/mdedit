@@ -1,7 +1,7 @@
 use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
-use rat_dialog::DialogControl;
+use rat_dialog::event::DialogControl;
 use rat_salsa::SalsaContext;
 use rat_widget::event::{Dialog, FileOutcome, HandleEvent, Outcome};
 use rat_widget::file_dialog::{FileDialog, FileDialogState};
@@ -45,10 +45,10 @@ pub fn event_new(
         .expect("dialog-state");
     match event {
         MDEvent::Event(event) => match state.handle(event, Dialog)? {
-            FileOutcome::Cancel => Ok(DialogControl::Close(None)),
+            FileOutcome::Cancel => Ok(DialogControl::Close(MDEvent::NoOp)),
             FileOutcome::Ok(p) => {
                 ctx.queue_event(MDEvent::New(p));
-                Ok(DialogControl::Close(None))
+                Ok(DialogControl::Close(MDEvent::NoOp))
             }
             r => Ok(Outcome::from(r).into()),
         },
@@ -66,10 +66,10 @@ pub fn event_open(
         .expect("dialog-state");
     match event {
         MDEvent::Event(event) => match state.handle(event, Dialog)? {
-            FileOutcome::Cancel => Ok(DialogControl::Close(None)),
+            FileOutcome::Cancel => Ok(DialogControl::Close(MDEvent::NoOp)),
             FileOutcome::Ok(p) => {
                 ctx.queue_event(MDEvent::Open(p));
-                Ok(DialogControl::Close(None))
+                Ok(DialogControl::Close(MDEvent::NoOp))
             }
             r => Ok(Outcome::from(r).into()),
         },
@@ -87,10 +87,10 @@ pub fn event_save_as(
         .expect("dialog-state");
     match event {
         MDEvent::Event(event) => match state.handle(event, Dialog)? {
-            FileOutcome::Cancel => Ok(DialogControl::Close(None)),
+            FileOutcome::Cancel => Ok(DialogControl::Close(MDEvent::NoOp)),
             FileOutcome::Ok(p) => {
                 ctx.queue_event(MDEvent::SaveAs(p));
-                Ok(DialogControl::Close(None))
+                Ok(DialogControl::Close(MDEvent::NoOp))
             }
             r => Ok(Outcome::from(r).into()),
         },

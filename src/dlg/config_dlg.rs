@@ -3,7 +3,7 @@ use crate::global::theme::dark_themes;
 use crate::global::GlobalState;
 use anyhow::Error;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use rat_dialog::DialogControl;
+use rat_dialog::event::DialogControl;
 use rat_salsa::SalsaContext;
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
@@ -222,7 +222,7 @@ impl ConfigDialogState {
             .expect("theme");
         ctx.theme = theme;
 
-        Ok(DialogControl::Close(None))
+        Ok(DialogControl::Close(MDEvent::NoOp))
     }
 
     fn save(&mut self, ctx: &mut GlobalState) -> Result<DialogControl<MDEvent>, Error> {
@@ -243,6 +243,6 @@ impl ConfigDialogState {
             .collect();
 
         ctx.queue_event(MDEvent::StoreConfig);
-        Ok(DialogControl::Close(None))
+        Ok(DialogControl::Close(MDEvent::NoOp))
     }
 }

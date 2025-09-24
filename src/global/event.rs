@@ -20,6 +20,8 @@ pub enum MDEvent {
     Message(String),
     // status flags
     Status(usize, String),
+    //
+    NoOp,
 
     // global actions
     MenuNew,
