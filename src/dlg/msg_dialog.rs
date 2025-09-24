@@ -1,7 +1,7 @@
 use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
-use rat_dialog::event::DialogControl;
+use rat_dialog::DialogControl;
 use rat_widget::event::{Dialog, HandleEvent, Outcome};
 use rat_widget::layout::layout_middle;
 use rat_widget::msgdialog::{MsgDialog, MsgDialogState};

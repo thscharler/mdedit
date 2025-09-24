@@ -1,7 +1,7 @@
 use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
-use rat_dialog::event::DialogControl;
+use rat_dialog::DialogControl;
 use rat_salsa::SalsaContext;
 use rat_widget::event::{Dialog, FileOutcome, HandleEvent, Outcome};
 use rat_widget::file_dialog::{FileDialog, FileDialogState};

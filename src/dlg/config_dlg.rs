@@ -3,7 +3,7 @@ use crate::global::theme::dark_themes;
 use crate::global::GlobalState;
 use anyhow::Error;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use rat_dialog::event::DialogControl;
+use rat_dialog::DialogControl;
 use rat_salsa::SalsaContext;
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
