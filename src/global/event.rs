@@ -3,6 +3,7 @@ use crossbeam::atomic::AtomicCell;
 use rat_salsa::event::{QuitEvent, RenderedEvent};
 use rat_salsa::timer::TimeOut;
 use std::path::PathBuf;
+use try_as::traits::TryAsRef;
 
 /// Events
 pub enum MDEvent {
@@ -78,6 +79,15 @@ impl From<RenderedEvent> for MDEvent {
 impl From<QuitEvent> for MDEvent {
     fn from(_: QuitEvent) -> Self {
         Self::Quit
+    }
+}
+
+impl TryAsRef<crossterm::event::Event> for MDEvent {
+    fn try_as_ref(&self) -> Option<&crossterm::event::Event> {
+        match self {
+            MDEvent::Event(e) => Some(e),
+            _ => None,
+        }
     }
 }
 

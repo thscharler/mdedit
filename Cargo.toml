@@ -26,6 +26,7 @@ pulldown-cmark = "0.12"
 toml = "0.8"
 crossbeam = "0.8"
 sys-locale = "0.3"
+try_as = "0.1"
 
 rat-salsa = { version = "2.1", path = "../rat-salsa/rat-salsa" }
 rat-dialog = { version = "0.4", path = "../rat-salsa/rat-dialog" }

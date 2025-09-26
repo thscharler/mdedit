@@ -12,6 +12,7 @@ use crossbeam::channel::SendError;
 use dirs::cache_dir;
 use dlg::{file_dlg, msg_dialog};
 use log::error;
+use rat_dialog::WindowControl;
 use rat_salsa::poll::{PollCrossterm, PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
@@ -341,7 +342,24 @@ pub fn event(
 ) -> Result<Control<MDEvent>, Error> {
     match mdevent {
         MDEvent::Event(event) => {
-            try_flow!(ctx.dialogs.clone().handle(mdevent, ctx)?);
+            try_flow!(match ctx.dialogs.clone().handle(mdevent, ctx)? {
+                WindowControl::Continue => {
+                    Control::Continue
+                }
+                WindowControl::Unchanged => {
+                    Control::Unchanged
+                }
+                WindowControl::Changed => {
+                    Control::Changed
+                }
+                WindowControl::Event(e) => {
+                    Control::Event(e)
+                }
+                WindowControl::Close(e) => {
+                    ctx.queue(Control::Changed);
+                    Control::Event(e)
+                }
+            });
 
             // ^W window commands
             if state.window_cmd {
@@ -498,7 +516,7 @@ fn store_config(state: &mut Scenery, ctx: &mut GlobalState) -> Control<MDEvent> 
 }
 
 fn show_message(msg: &str, ctx: &mut GlobalState) -> Control<MDEvent> {
-    if let Some(n) = ctx.dialogs.first::<MsgDialogState>() {
+    if let Some(n) = ctx.dialogs.top::<MsgDialogState>() {
         let dlg = ctx.dialogs.get::<MsgDialogState>(n);
         dlg.append(msg);
     } else {

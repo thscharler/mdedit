@@ -3,7 +3,7 @@ use crate::global::theme::dark_themes;
 use crate::global::GlobalState;
 use anyhow::Error;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use rat_dialog::DialogControl;
+use rat_dialog::WindowControl;
 use rat_salsa::SalsaContext;
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
@@ -143,7 +143,7 @@ pub fn event(
     event: &MDEvent,
     state: &mut dyn Any,
     ctx: &mut GlobalState,
-) -> Result<DialogControl<MDEvent>, Error> {
+) -> Result<WindowControl<MDEvent>, Error> {
     let state = state.downcast_mut::<ConfigDialogState>().expect("state");
 
     if let MDEvent::Event(event) = event {
@@ -163,7 +163,7 @@ pub fn event(
                         .expect("theme");
 
                     ctx.theme = theme;
-                    DialogControl::Changed
+                    WindowControl::Changed
                 }
                 r => r.into(),
             });
@@ -185,9 +185,9 @@ pub fn event(
                 r => r.into(),
             });
 
-            Ok(DialogControl::Unchanged)
+            Ok(WindowControl::Unchanged)
         }
-        _ => Ok(DialogControl::Continue),
+        _ => Ok(WindowControl::Continue),
     }
 }
 
@@ -214,7 +214,7 @@ impl ConfigDialogState {
         Ok(s)
     }
 
-    fn cancel(&mut self, ctx: &mut GlobalState) -> Result<DialogControl<MDEvent>, Error> {
+    fn cancel(&mut self, ctx: &mut GlobalState) -> Result<WindowControl<MDEvent>, Error> {
         let theme = dark_themes()
             .iter()
             .find(|v| v.name() == ctx.cfg.theme)
@@ -222,10 +222,10 @@ impl ConfigDialogState {
             .expect("theme");
         ctx.theme = theme;
 
-        Ok(DialogControl::Close(MDEvent::NoOp))
+        Ok(WindowControl::Close(MDEvent::NoOp))
     }
 
-    fn save(&mut self, ctx: &mut GlobalState) -> Result<DialogControl<MDEvent>, Error> {
+    fn save(&mut self, ctx: &mut GlobalState) -> Result<WindowControl<MDEvent>, Error> {
         let cfg = &mut ctx.cfg;
         cfg.theme = self.theme.value();
         cfg.text_width = self.text_width.value()?;
@@ -243,6 +243,6 @@ impl ConfigDialogState {
             .collect();
 
         ctx.queue_event(MDEvent::StoreConfig);
-        Ok(DialogControl::Close(MDEvent::NoOp))
+        Ok(WindowControl::Close(MDEvent::NoOp))
     }
 }
