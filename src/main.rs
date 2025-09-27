@@ -343,21 +343,16 @@ pub fn event(
     match mdevent {
         MDEvent::Event(event) => {
             try_flow!(match ctx.dialogs.clone().handle(mdevent, ctx)? {
-                WindowControl::Continue => {
-                    Control::Continue
-                }
-                WindowControl::Unchanged => {
-                    Control::Unchanged
-                }
-                WindowControl::Changed => {
+                WindowControl::Continue => Control::Continue,
+                WindowControl::Unchanged => Control::Unchanged,
+                WindowControl::Changed => Control::Changed,
+                WindowControl::Event(e) => {
+                    ctx.queue_event(e);
                     Control::Changed
                 }
-                WindowControl::Event(e) => {
-                    Control::Event(e)
-                }
                 WindowControl::Close(e) => {
-                    ctx.queue(Control::Changed);
-                    Control::Event(e)
+                    ctx.queue_event(e);
+                    Control::Changed
                 }
             });
 
