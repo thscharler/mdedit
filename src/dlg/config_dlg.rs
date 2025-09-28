@@ -9,9 +9,9 @@ use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
 use rat_widget::event::{try_flow, ButtonOutcome, ChoiceOutcome, HandleEvent, Popup, Regular};
 use rat_widget::focus::{impl_has_focus, FocusBuilder, HasFocus};
+use rat_widget::form::{Form, FormState};
 use rat_widget::layout::{layout_middle, FormLabel, FormWidget, LayoutForm};
 use rat_widget::number_input::{NumberInput, NumberInputState};
-use rat_widget::pager::{Form, FormState};
 use rat_widget::text::HasScreenCursor;
 use rat_widget::text_input::{TextInput, TextInputState};
 use rat_widget::util::reset_buf_area;
@@ -64,6 +64,7 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
     let layout_size = form.layout_size(l[0]);
     if !state.form.valid_layout(layout_size) {
         let mut layout = LayoutForm::new()
+            .border(Padding::new(1, 1, 1, 1))
             .spacing(1)
             .line_spacing(1)
             .flex(Flex::Legacy);
@@ -83,7 +84,7 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
             FormLabel::Str("Files glob"),
             FormWidget::Width(35),
         );
-        form = form.layout(layout.endless(layout_size.width, Padding::new(1, 1, 1, 1)));
+        form = form.layout(layout.build_endless(layout_size.width));
     }
     let mut form = form.into_buffer(l[0], buf, &mut state.form);
 

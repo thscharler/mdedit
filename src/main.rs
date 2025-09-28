@@ -342,6 +342,13 @@ pub fn event(
 ) -> Result<Control<MDEvent>, Error> {
     match mdevent {
         MDEvent::Event(event) => {
+            // regular global
+            try_flow!(match &event {
+                ct_event!(resized) => Control::Changed,
+                ct_event!(key press CONTROL-'q') => Control::Quit,
+                _ => Control::Continue,
+            });
+
             try_flow!(match ctx.dialogs.clone().handle(mdevent, ctx)? {
                 WindowControl::Continue => Control::Continue,
                 WindowControl::Unchanged => Control::Unchanged,
