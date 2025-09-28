@@ -116,6 +116,8 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
         form.render(state.theme.id(), || choice_overlay, &mut state.theme);
     }
 
+    form.into_widget().render(l[0], buf, &mut state.form);
+
     // that "§$"§ curser
     ctx.set_screen_cursor(
         state
