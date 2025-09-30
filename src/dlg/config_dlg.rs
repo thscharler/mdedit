@@ -59,6 +59,7 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
     block.render(cfg_area, buf);
 
     let mut form = Form::new() //
+        .show_navigation(false)
         .style(ctx.theme.dialog_base());
 
     let layout_size = form.layout_size(l[0]);
@@ -115,8 +116,6 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
     if let Some(choice_overlay) = choice_overlay {
         form.render(state.theme.id(), || choice_overlay, &mut state.theme);
     }
-
-    form.finish(&mut state.form);
 
     // that "§$"§ curser
     ctx.set_screen_cursor(
