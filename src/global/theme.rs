@@ -694,7 +694,7 @@ impl DarkTheme {
     pub fn textarea_style_doc(&self) -> TextStyle {
         TextStyle {
             style: self.doc_base(),
-            focus: Some(self.focus()),
+            focus: Some(self.doc_base()),
             select: Some(self.doc_text_select()),
             scroll: Some(self.doc_scroll_style()),
             border_style: Some(self.doc_border()),
