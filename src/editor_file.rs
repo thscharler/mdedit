@@ -354,7 +354,7 @@ impl MDFileState {
     /// Follow the link at the cursor.
     fn follow_link(&mut self, ctx: &mut GlobalState) -> Result<Control<MDEvent>, Error> {
         let pos = self.edit.byte_at(self.edit.cursor());
-        let Some(link_range) = self.edit.style_match(pos.start, MDStyle::Link.into()) else {
+        let Some(link_range) = self.edit.styles_at_match(pos.start, MDStyle::Link.into()) else {
             return Ok(Control::Continue);
         };
 
