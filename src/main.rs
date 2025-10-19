@@ -314,7 +314,7 @@ pub fn init(state: &mut Scenery, ctx: &mut GlobalState) -> Result<(), Error> {
         }
         for (s, t, x, y, z) in ctx.cfg.tab_offset.clone() {
             if let Some(edit) = state.editor.editor_at(s, t) {
-                edit.edit.set_offset((x as usize, y as usize));
+                edit.edit.set_offset((x, y));
                 edit.edit.set_sub_row_offset(z);
             }
         }
