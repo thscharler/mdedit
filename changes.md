@@ -1,3 +1,7 @@
+# 0.9.0
+
+* upgrade rat-text to 2.0.0
+
 # 0.8.0
 
 * update to rat-salsa 2.1.0
