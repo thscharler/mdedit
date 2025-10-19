@@ -18,7 +18,6 @@ use rat_widget::list::ListStyle;
 use rat_widget::menu::MenuStyle;
 use rat_widget::msgdialog::MsgDialogStyle;
 use rat_widget::paragraph::ParagraphStyle;
-use rat_widget::popup::PopupStyle;
 use rat_widget::radio::{RadioLayout, RadioStyle};
 use rat_widget::scrolled::{ScrollStyle, ScrollSymbols};
 use rat_widget::shadow::{ShadowDirection, ShadowStyle};
@@ -349,16 +348,14 @@ impl DarkTheme {
             style: self.text_input(),
             select: Some(self.text_select()),
             focus: Some(self.text_focus()),
-            popup: PopupStyle {
-                style: self.popup_base(),
-                scroll: Some(self.popup_scroll_style()),
-                block: Some(
-                    Block::bordered()
-                        .borders(Borders::LEFT)
-                        .border_style(self.popup_arrow()),
-                ),
-                ..Default::default()
-            },
+            popup_style: Some(self.popup_base()),
+            popup_scroll: Some(self.popup_scroll_style()),
+            popup_block: Some(
+                Block::bordered()
+                    .borders(Borders::LEFT)
+                    .border_style(self.popup_arrow()),
+            ),
+            popup: Default::default(),
             ..Default::default()
         }
     }
@@ -392,11 +389,9 @@ impl DarkTheme {
             right: Some(Style::default().fg(self.p.bluegreen[0])),
             disabled: Some(Style::default().fg(self.p.gray[0])),
             highlight: Some(Style::default().underlined()),
-            popup: PopupStyle {
-                style: menu,
-                block: Some(Block::bordered()),
-                ..Default::default()
-            },
+            popup_style: Some(menu),
+            block: Some(Block::bordered()),
+            popup: Default::default(),
             ..Default::default()
         }
     }
@@ -592,11 +587,9 @@ impl DarkTheme {
             right: Some(Style::default().fg(self.p.bluegreen[0])),
             disabled: Some(Style::default().fg(self.p.gray[0])),
             highlight: Some(Style::default().underlined()),
-            popup: PopupStyle {
-                style: self.status_base(),
-                block: Some(Block::bordered()),
-                ..Default::default()
-            },
+            popup_style: Some(self.status_base()),
+            block: Some(Block::bordered()),
+            popup: Default::default(),
             ..Default::default()
         }
     }
@@ -607,16 +600,14 @@ impl DarkTheme {
             style: self.container_base(),
             select: Some(self.select()),
             focus: Some(self.focus()),
-            popup: PopupStyle {
-                style: self.style(self.p.black[3]),
-                scroll: Some(self.scroll_style()),
-                block: Some(
-                    Block::bordered()
-                        .borders(Borders::LEFT)
-                        .border_style(self.container_border()),
-                ),
-                ..Default::default()
-            },
+            popup_style: Some(self.style(self.p.black[3])),
+            popup_scroll: Some(self.scroll_style()),
+            popup_block: Some(
+                Block::bordered()
+                    .borders(Borders::LEFT)
+                    .border_style(self.container_border()),
+            ),
+            popup: Default::default(),
             ..Default::default()
         }
     }
