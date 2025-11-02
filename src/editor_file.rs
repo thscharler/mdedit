@@ -157,7 +157,6 @@ impl Clone for MDFileState {
             parse_timer: None,
         };
 
-        // todo: cleanup
         let nnn = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("fine")
