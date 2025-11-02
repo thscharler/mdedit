@@ -65,7 +65,7 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
     let layout_size = form.layout_size(l[0]);
     if !state.form.valid_layout(layout_size) {
         let mut layout = LayoutForm::new()
-            .border(Padding::new(1, 1, 1, 1))
+            .padding(Padding::new(1, 1, 1, 1))
             .spacing(1)
             .line_spacing(1)
             .flex(Flex::Legacy);
