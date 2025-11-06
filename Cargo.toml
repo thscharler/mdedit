@@ -28,8 +28,8 @@ crossbeam = "0.8"
 sys-locale = "0.3"
 try_as = "0.1"
 
-rat-salsa = { version = "2.2", path = "../rat-salsa/rat-salsa" }
+rat-salsa = { version = "2.3", path = "../rat-salsa/rat-salsa" }
 rat-dialog = { version = "0.7", path = "../rat-salsa/rat-dialog" }
-rat-widget = { version = "2.1", path = "../rat-salsa/rat-widget", features = ["user_directories"] }
+rat-widget = { version = "2.2", path = "../rat-salsa/rat-widget", features = ["user_directories"] }
 rat-theme2 = { version = "1.4", path = "../rat-salsa/rat-theme2" }
 rat-markdown = { version = "0.6", path = "../rat-salsa/rat-markdown" }
