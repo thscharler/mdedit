@@ -8,6 +8,7 @@ use rat_markdown::styles::MDStyle;
 use rat_markdown::MarkDown;
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{Control, SalsaContext};
+use rat_theme4::Colors;
 use rat_widget::event::util::MouseFlags;
 use rat_widget::event::{ct_event, try_flow, ConsumedEvent, HandleEvent, TextOutcome};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
@@ -91,45 +92,80 @@ pub fn render(
 }
 
 fn text_style(ctx: &GlobalState) -> HashMap<usize, Style> {
-    let sc = ctx.scheme();
-    let sty = |c: Color| Style::new().fg(c);
+    let sc = ctx.palette();
 
     let mut map = HashMap::new();
 
     //let base = sc.white[0];
-    map.insert(MDStyle::Heading1.into(), sty(sc.white[3]).underlined());
-    map.insert(MDStyle::Heading2.into(), sty(sc.white[3]).underlined());
-    map.insert(MDStyle::Heading3.into(), sty(sc.white[2]).underlined());
-    map.insert(MDStyle::Heading4.into(), sty(sc.white[2]).underlined());
-    map.insert(MDStyle::Heading5.into(), sty(sc.white[1]).underlined());
-    map.insert(MDStyle::Heading6.into(), sty(sc.white[1]).underlined());
+    map.insert(
+        MDStyle::Heading1.into(),
+        sc.fg_style(Colors::White, 3).underlined(),
+    );
+    map.insert(
+        MDStyle::Heading2.into(),
+        sc.fg_style(Colors::White, 3).underlined(),
+    );
+    map.insert(
+        MDStyle::Heading3.into(),
+        sc.fg_style(Colors::White, 2).underlined(),
+    );
+    map.insert(
+        MDStyle::Heading4.into(),
+        sc.fg_style(Colors::White, 2).underlined(),
+    );
+    map.insert(
+        MDStyle::Heading5.into(),
+        sc.fg_style(Colors::White, 1).underlined(),
+    );
+    map.insert(
+        MDStyle::Heading6.into(),
+        sc.fg_style(Colors::White, 1).underlined(),
+    );
 
     map.insert(MDStyle::Paragraph.into(), Style::new());
-    map.insert(MDStyle::BlockQuote.into(), sty(sc.orange[2]));
-    map.insert(MDStyle::CodeBlock.into(), sty(sc.redpink[2]));
-    map.insert(MDStyle::MathDisplay.into(), sty(sc.redpink[2]));
-    map.insert(MDStyle::Rule.into(), sty(sc.white[2]));
-    map.insert(MDStyle::Html.into(), sty(sc.gray[2]));
+    map.insert(MDStyle::BlockQuote.into(), sc.fg_style(Colors::Orange, 2));
+    map.insert(MDStyle::CodeBlock.into(), sc.fg_style(Colors::RedPink, 2));
+    map.insert(MDStyle::MathDisplay.into(), sc.fg_style(Colors::RedPink, 2));
+    map.insert(MDStyle::Rule.into(), sc.fg_style(Colors::White, 2));
+    map.insert(MDStyle::Html.into(), sc.fg_style(Colors::Gray, 2));
 
-    map.insert(MDStyle::Link.into(), sty(sc.bluegreen[1]).underlined());
-    map.insert(MDStyle::LinkDef.into(), sty(sc.bluegreen[1]));
-    map.insert(MDStyle::Image.into(), sty(sc.bluegreen[1]).underlined());
-    map.insert(MDStyle::FootnoteDefinition.into(), sty(sc.bluegreen[2]));
+    map.insert(
+        MDStyle::Link.into(),
+        sc.fg_style(Colors::BlueGreen, 1).underlined(),
+    );
+    map.insert(MDStyle::LinkDef.into(), sc.fg_style(Colors::BlueGreen, 1));
+    map.insert(
+        MDStyle::Image.into(),
+        sc.fg_style(Colors::BlueGreen, 1).underlined(),
+    );
+    map.insert(
+        MDStyle::FootnoteDefinition.into(),
+        sc.fg_style(Colors::BlueGreen, 2),
+    );
     map.insert(
         MDStyle::FootnoteReference.into(),
-        sty(sc.bluegreen[1]).underlined(),
+        sc.fg_style(Colors::BlueGreen, 1).underlined(),
     );
 
     map.insert(MDStyle::List.into(), Style::new());
     map.insert(MDStyle::Item.into(), Style::new());
-    map.insert(MDStyle::TaskListMarker.into(), sty(sc.orange[1]));
-    map.insert(MDStyle::ItemTag.into(), sty(sc.orange[1]));
+    map.insert(
+        MDStyle::TaskListMarker.into(),
+        sc.fg_style(Colors::Orange, 1),
+    );
+    map.insert(MDStyle::ItemTag.into(), sc.fg_style(Colors::Orange, 1));
     map.insert(MDStyle::DefinitionList.into(), Style::new());
-    map.insert(MDStyle::DefinitionListTitle.into(), sty(sc.orange[2]));
-    map.insert(MDStyle::DefinitionListDefinition.into(), sty(sc.orange[1]));
+    map.insert(
+        MDStyle::DefinitionListTitle.into(),
+        sc.fg_style(Colors::Orange, 2),
+    );
+    map.insert(
+        MDStyle::DefinitionListDefinition.into(),
+        sc.fg_style(Colors::Orange, 1),
+    );
 
     map.insert(MDStyle::Table.into(), Style::new());
-    map.insert(MDStyle::TableHead.into(), sty(sc.orange[2]));
+    map.insert(MDStyle::TableHead.into(), sc.fg_style(Colors::Orange, 2));
     map.insert(MDStyle::TableRow.into(), Style::new());
     map.insert(MDStyle::TableCell.into(), Style::new());
 
@@ -137,9 +173,12 @@ fn text_style(ctx: &GlobalState) -> HashMap<usize, Style> {
     map.insert(MDStyle::Strong.into(), Style::new().bold());
     map.insert(MDStyle::Strikethrough.into(), Style::new().crossed_out());
 
-    map.insert(MDStyle::CodeInline.into(), sty(sc.redpink[1]));
-    map.insert(MDStyle::MathInline.into(), sty(sc.redpink[1]));
-    map.insert(MDStyle::MetadataBlock.into(), sty(sc.orange[1]));
+    map.insert(MDStyle::CodeInline.into(), sc.fg_style(Colors::RedPink, 1));
+    map.insert(MDStyle::MathInline.into(), sc.fg_style(Colors::RedPink, 1));
+    map.insert(
+        MDStyle::MetadataBlock.into(),
+        sc.fg_style(Colors::Orange, 1),
+    );
 
     map
 }
@@ -162,7 +201,8 @@ impl Clone for MDFileState {
             .expect("fine")
             .as_millis()
             % 86400;
-        s.edit.focus = FocusFlag::named(format!("{} {}", s.edit.focus.name(), nnn).as_str());
+        s.edit.focus =
+            FocusFlag::new().with_name(format!("{} {}", s.edit.focus.name(), nnn).as_str());
 
         s
     }

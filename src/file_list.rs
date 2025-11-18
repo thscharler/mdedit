@@ -3,6 +3,7 @@ use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
 use rat_salsa::{Control, SalsaContext};
+use rat_theme4::Colors;
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
 use rat_widget::event::{ct_event, try_flow, ChoiceOutcome, HandleEvent, Popup, Regular};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
@@ -46,7 +47,7 @@ pub fn render(
     ctx: &mut GlobalState,
 ) -> Result<(), Error> {
     let theme = &ctx.theme;
-    let scheme = &ctx.scheme();
+    let scheme = &ctx.palette();
 
     let l_file_list = Layout::vertical([
         Constraint::Length(1),
@@ -60,7 +61,7 @@ pub fn render(
     buf.set_style(l_file_list[0], theme.container_base());
 
     Line::from(state.sys.name())
-        .style(theme.container_base().fg(scheme.green[2]))
+        .style(theme.container_base().fg(scheme.color(Colors::Green, 2)))
         .render(l_file_list[1], buf);
 
     let popup_len = min(l_file_list[4].height, state.sys.dirs_len() as u16);

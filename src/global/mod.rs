@@ -8,7 +8,7 @@ use crate::global::theme::DarkTheme;
 use anyhow::Error;
 use rat_dialog::DialogStack;
 use rat_salsa::{SalsaAppContext, SalsaContext};
-use rat_theme2::Palette;
+use rat_theme4::Palette;
 use rat_widget::hover::HoverState;
 
 #[derive(Debug)]
@@ -41,7 +41,7 @@ impl GlobalState {
         }
     }
 
-    pub fn scheme(&self) -> &Palette {
+    pub fn palette(&self) -> &Palette {
         &self.theme.palette()
     }
 }
