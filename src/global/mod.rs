@@ -8,7 +8,7 @@ use crate::global::theme::DarkTheme;
 use anyhow::Error;
 use rat_dialog::DialogStack;
 use rat_salsa::{SalsaAppContext, SalsaContext};
-use rat_theme4::Palette;
+use rat_theme4::palette::Palette;
 use rat_widget::hover::HoverState;
 
 #[derive(Debug)]

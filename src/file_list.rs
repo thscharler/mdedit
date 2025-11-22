@@ -3,7 +3,7 @@ use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
 use rat_salsa::{Control, SalsaContext};
-use rat_theme4::Colors;
+use rat_theme4::palette::Colors;
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
 use rat_widget::event::{ct_event, try_flow, ChoiceOutcome, HandleEvent, Popup, Regular};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};

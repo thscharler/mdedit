@@ -2,7 +2,7 @@ use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
 use rat_dialog::WindowControl;
-use rat_theme4::Colors;
+use rat_theme4::palette::Colors;
 use rat_widget::event::{Dialog, HandleEvent, Outcome};
 use rat_widget::layout::layout_middle;
 use rat_widget::msgdialog::{MsgDialog, MsgDialogState};

@@ -1,11 +1,11 @@
 //!
 //! Implements a dark theme.
 //!
-use rat_theme4::dark_palettes::{
+use rat_theme4::palette::{Colors, Palette};
+use rat_theme4::palettes::dark::{
     BASE16, BLACK_WHITE, IMPERIAL, MONEKAI, MONOCHROME, OCEAN, OXOCARBON, RADIUM, SOLARIZED,
     TUNDRA, VSCODE,
 };
-use rat_theme4::{Colors, Palette};
 use rat_widget::button::ButtonStyle;
 use rat_widget::calendar::CalendarStyle;
 use rat_widget::checkbox::CheckboxStyle;

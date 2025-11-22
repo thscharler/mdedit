@@ -8,7 +8,7 @@ use rat_markdown::styles::MDStyle;
 use rat_markdown::MarkDown;
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{Control, SalsaContext};
-use rat_theme4::Colors;
+use rat_theme4::palette::Colors;
 use rat_widget::event::util::MouseFlags;
 use rat_widget::event::{ct_event, try_flow, ConsumedEvent, HandleEvent, TextOutcome};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
