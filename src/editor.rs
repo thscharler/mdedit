@@ -33,7 +33,7 @@ pub fn render(
 ) -> Result<(), Error> {
     let theme = &ctx.theme;
 
-    let split = Split::horizontal()
+    let (split_layout, split) = Split::horizontal()
         .styles(theme.split_style())
         .mark_offset(1)
         .constraints([
@@ -41,7 +41,8 @@ pub fn render(
             Constraint::Fill(1),
         ])
         .split_type(SplitType::FullEmpty)
-        .into_widget(area, &mut state.split_files);
+        .into_widgets();
+    split_layout.render(area, buf, &mut state.split_files);
 
     file_list::render(
         state.split_files.widget_areas[0],

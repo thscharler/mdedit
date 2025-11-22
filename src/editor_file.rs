@@ -20,7 +20,7 @@ use rat_widget::textarea::{TextArea, TextAreaState, TextWrap};
 use rat_widget::util::fill_buf_area;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style, Stylize};
+use ratatui::style::{Style, Stylize};
 use ratatui::widgets::{Block, BorderType, Borders, StatefulWidget};
 use std::cell::RefCell;
 use std::collections::HashMap;

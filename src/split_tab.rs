@@ -35,7 +35,7 @@ pub struct SplitTabState {
 impl Default for SplitTabState {
     fn default() -> Self {
         Self {
-            container: FocusFlag::named("split_tab"),
+            container: FocusFlag::new().with_name("split_tab"),
             sel_split: Default::default(),
             sel_tab: Default::default(),
             split: SplitState::named("splitter"),
@@ -51,19 +51,20 @@ pub fn render(
     state: &mut SplitTabState,
     ctx: &mut GlobalState,
 ) -> Result<(), Error> {
-    let (split, split_areas) = Split::horizontal()
+    let (split_layout, split) = Split::horizontal()
         .constraints(vec![Constraint::Fill(1); state.split_tab.len()])
         .mark_offset(0)
         .split_type(SplitType::Scroll)
         .styles(ctx.theme.split_style())
-        .into_widget_layout(area, &mut state.split);
+        .into_widgets();
+    split_layout.render(area, buf, &mut state.split);
 
-    if split_areas.is_empty() {
+    if state.split.widget_areas.is_empty() {
         buf.set_style(area, ctx.theme.textarea_style_doc().style);
     }
 
-    let max_idx_split = split_areas.len().saturating_sub(1);
-    for (idx_split, edit_area) in split_areas.iter().enumerate() {
+    let max_idx_split = state.split.widget_areas.len().saturating_sub(1);
+    for (idx_split, edit_area) in state.split.widget_areas.iter().enumerate() {
         Tabbed::new()
             .tab_type(TabType::Glued)
             .closeable(true)
