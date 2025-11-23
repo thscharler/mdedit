@@ -1,19 +1,22 @@
 use crate::fsys::FileSysStructure;
 use crate::global::event::MDEvent;
+use crate::global::theme::MDWidgets;
 use crate::global::GlobalState;
 use anyhow::Error;
 use rat_salsa::{Control, SalsaContext};
 use rat_theme4::palette::Colors;
+use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
 use rat_widget::event::{ct_event, try_flow, ChoiceOutcome, HandleEvent, Popup, Regular};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::list::selection::RowSelection;
-use rat_widget::list::{List, ListState};
+use rat_widget::list::{List, ListState, ListStyle};
 use rat_widget::popup::Placement;
 use rat_widget::scrolled::Scroll;
 use rat_widget::util::revert_style;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::style::Style;
 use ratatui::text::Line;
 use ratatui::widgets::{StatefulWidget, Widget};
 use std::cmp::min;
@@ -58,16 +61,20 @@ pub fn render(
     ])
     .split(area);
 
-    buf.set_style(l_file_list[0], theme.container_base());
+    buf.set_style(l_file_list[0], theme.style_style(Style::CONTAINER_BASE));
 
     Line::from(state.sys.name())
-        .style(theme.container_base().fg(scheme.color(Colors::Green, 2)))
+        .style(
+            theme
+                .style_style(Style::CONTAINER_BASE)
+                .fg(scheme.color(Colors::Green, 2)),
+        )
         .render(l_file_list[1], buf);
 
     let popup_len = min(l_file_list[4].height, state.sys.dirs_len() as u16);
 
     let (choice, choice_popup) = Choice::new()
-        .styles(theme.choice_style_tools())
+        .styles(theme.style(WidgetStyle::CHOICE_TOOLS))
         .items(
             state
                 .sys
@@ -84,10 +91,10 @@ pub fn render(
         .into_widgets();
     choice.render(l_file_list[2], buf, &mut state.file_system);
 
-    buf.set_style(l_file_list[3], theme.container_base());
+    buf.set_style(l_file_list[3], theme.style_style(Style::CONTAINER_BASE));
 
     List::default()
-        .scroll(Scroll::new().styles(theme.scroll_style()))
+        .scroll(Scroll::new().styles(theme.style(WidgetStyle::SCROLL)))
         .items(state.sys.files().iter().map(|v| {
             if let Some(name) = v.file_name() {
                 Line::from(name.to_string_lossy().to_string())
@@ -95,7 +102,7 @@ pub fn render(
                 Line::from("???")
             }
         }))
-        .styles(theme.list_style())
+        .styles(theme.style(WidgetStyle::LIST))
         .render(l_file_list[4], buf, &mut state.file_list);
 
     // render hover for overlong file names
@@ -103,10 +110,13 @@ pub fn render(
         if let Some(selected) = state.file_list.selected() {
             let idx = selected - state.file_list.offset();
 
-            let focus_style = theme
-                .list_style()
-                .focus
-                .unwrap_or(revert_style(theme.list_style().style));
+            let focus_style =
+                theme
+                    .style::<ListStyle>(WidgetStyle::LIST)
+                    .focus
+                    .unwrap_or(revert_style(
+                        theme.style::<ListStyle>(WidgetStyle::LIST).style,
+                    ));
 
             let line = state.sys.files().iter().nth(idx).map(|v| {
                 if let Some(name) = v.file_name() {

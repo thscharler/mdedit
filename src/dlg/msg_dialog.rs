@@ -3,6 +3,7 @@ use crate::global::GlobalState;
 use anyhow::Error;
 use rat_dialog::WindowControl;
 use rat_theme4::palette::Colors;
+use rat_theme4::WidgetStyle;
 use rat_widget::event::{Dialog, HandleEvent, Outcome};
 use rat_widget::layout::layout_middle;
 use rat_widget::msgdialog::{MsgDialog, MsgDialogState};
@@ -29,7 +30,7 @@ pub fn render(
     );
 
     MsgDialog::new()
-        .styles(ctx.theme.msg_dialog_style())
+        .styles(ctx.theme.style(WidgetStyle::MSG_DIALOG))
         .render(area, buf, state);
 }
 
@@ -55,7 +56,7 @@ pub fn render_info(
                 .title_style(Style::new().fg(ctx.palette().color(Colors::BlueGreen, 0)))
                 .padding(Padding::new(1, 1, 1, 1)),
         )
-        .styles(ctx.theme.msg_dialog_style())
+        .styles(ctx.theme.style(WidgetStyle::MSG_DIALOG))
         .render(area, buf, state);
 }
 

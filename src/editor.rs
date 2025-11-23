@@ -7,6 +7,7 @@ use crate::split_tab::SplitTabState;
 use crate::{file_list, split_tab};
 use anyhow::Error;
 use rat_salsa::{Control, SalsaContext};
+use rat_theme4::WidgetStyle;
 use rat_widget::event::{break_flow, HandleEvent, Outcome, Regular};
 use rat_widget::focus::{impl_has_focus, HasFocus};
 use rat_widget::splitter::{Split, SplitState, SplitType};
@@ -34,7 +35,7 @@ pub fn render(
     let theme = &ctx.theme;
 
     let (split_layout, split) = Split::horizontal()
-        .styles(theme.split_style())
+        .styles(theme.style(WidgetStyle::SPLIT))
         .mark_offset(1)
         .constraints([
             Constraint::Length(ctx.cfg.file_split_at),

@@ -1,10 +1,11 @@
 use crate::global::event::MDEvent;
-use crate::global::theme::dark_themes;
+use crate::global::theme::create_mdedit_theme;
 use crate::global::GlobalState;
 use anyhow::Error;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rat_dialog::WindowControl;
 use rat_salsa::SalsaContext;
+use rat_theme4::{salsa_themes, StyleName, WidgetStyle};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
 use rat_widget::event::{try_flow, ButtonOutcome, ChoiceOutcome, HandleEvent, Popup, Regular};
@@ -17,6 +18,7 @@ use rat_widget::text_input::{TextInput, TextInputState};
 use rat_widget::util::reset_buf_area;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
+use ratatui::style::Style;
 use ratatui::widgets::{Block, Padding, StatefulWidget, Widget};
 use std::any::Any;
 
@@ -43,8 +45,8 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
     );
 
     let block = Block::bordered()
-        .style(ctx.theme.dialog_base())
-        .border_style(ctx.theme.dialog_border());
+        .style(ctx.theme.style_style(Style::DIALOG_BASE))
+        .border_style(ctx.theme.style_style(Style::DIALOG_BORDER_FG));
     let inner = block.inner(cfg_area);
 
     let l = Layout::vertical([
@@ -60,7 +62,7 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
 
     let mut form = Form::new() //
         .show_navigation(false)
-        .style(ctx.theme.dialog_base());
+        .style(ctx.theme.style_style(Style::DIALOG_BASE));
 
     let layout_size = form.layout_size(l[0]);
     if !state.form.valid_layout(layout_size) {
@@ -93,11 +95,11 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
         state.theme.id(),
         || {
             Choice::new()
-                .styles(ctx.theme.choice_style())
+                .styles(ctx.theme.style(WidgetStyle::CHOICE))
                 .items(
-                    dark_themes()
+                    salsa_themes()
                         .iter()
-                        .map(|v| (v.name().to_string(), v.name().to_string())),
+                        .map(|v| (v.to_string(), v.to_string())),
                 )
                 .into_widgets()
         },
@@ -105,12 +107,12 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
     );
     form.render(
         state.text_width.id(),
-        || NumberInput::new().styles(ctx.theme.text_style()),
+        || NumberInput::new().styles(ctx.theme.style(WidgetStyle::TEXT)),
         &mut state.text_width,
     );
     form.render(
         state.globs.id(),
-        || TextInput::new().styles(ctx.theme.text_style()),
+        || TextInput::new().styles(ctx.theme.style(WidgetStyle::TEXT)),
         &mut state.globs,
     );
     if let Some(choice_overlay) = choice_overlay {
@@ -132,10 +134,10 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
         .split(l[2]);
 
     Button::new("Cancel")
-        .styles(ctx.theme.button_style())
+        .styles(ctx.theme.style(WidgetStyle::BUTTON))
         .render(l2[0], buf, &mut state.cancel_button);
     Button::new("Ok")
-        .styles(ctx.theme.button_style()) //
+        .styles(ctx.theme.style(WidgetStyle::BUTTON)) //
         .render(l2[1], buf, &mut state.ok_button);
 }
 
@@ -158,13 +160,13 @@ pub fn event(
         MDEvent::Event(event) => {
             try_flow!(match state.theme.handle(event, Popup) {
                 ChoiceOutcome::Value => {
-                    let theme = dark_themes()
+                    let theme = salsa_themes()
                         .iter()
-                        .find(|v| v.name() == state.theme.value().as_str())
+                        .find(|v| **v == state.theme.value().as_str())
                         .cloned()
                         .expect("theme");
 
-                    ctx.theme = theme;
+                    ctx.theme = create_mdedit_theme(theme);
                     WindowControl::Changed
                 }
                 r => r.into(),
@@ -217,12 +219,12 @@ impl ConfigDialogState {
     }
 
     fn cancel(&mut self, ctx: &mut GlobalState) -> Result<WindowControl<MDEvent>, Error> {
-        let theme = dark_themes()
+        let theme = salsa_themes()
             .iter()
-            .find(|v| v.name() == ctx.cfg.theme)
+            .find(|v| **v == ctx.cfg.theme)
             .cloned()
             .expect("theme");
-        ctx.theme = theme;
+        ctx.theme = create_mdedit_theme(theme);
 
         Ok(WindowControl::Close(MDEvent::NoOp))
     }

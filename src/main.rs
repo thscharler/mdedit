@@ -4,7 +4,7 @@ use crate::dlg::config_dlg;
 use crate::editor::MDEditState;
 use crate::fsys::FileSysStructure;
 use crate::global::event::MDEvent;
-use crate::global::theme::{dark_themes, DarkTheme};
+use crate::global::theme::{create_mdedit_theme, MDWidgets};
 use crate::global::GlobalState;
 use anyhow::Error;
 use crossbeam::atomic::AtomicCell;
@@ -16,7 +16,7 @@ use rat_dialog::WindowControl;
 use rat_salsa::poll::{PollCrossterm, PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
-use rat_theme4::palettes::dark::IMPERIAL;
+use rat_theme4::WidgetStyle;
 use rat_widget::event::{ct_event, try_flow, HandleEvent, MenuOutcome, Popup};
 use rat_widget::file_dialog::FileDialogState;
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
@@ -69,12 +69,7 @@ fn main() -> Result<(), Error> {
         load
     };
 
-    let theme = dark_themes()
-        .iter()
-        .find(|v| v.name() == config.theme)
-        .cloned()
-        .unwrap_or(DarkTheme::new("Imperial".into(), IMPERIAL));
-
+    let theme = create_mdedit_theme("Imperial Dark");
     let mut global = GlobalState::new(config, theme);
 
     let mut state = Scenery::default();
@@ -213,27 +208,20 @@ pub fn render(
         .popup_block(Block::bordered())
         .popup_placement(Placement::Above)
         .styles(if state.menu.is_focused() {
-            ctx.theme.menu_style()
+            ctx.theme.style(WidgetStyle::MENU)
         } else {
-            ctx.theme.menu_style_hidden()
+            ctx.theme.style(WidgetStyle::MENU_HIDDEN)
         })
         .into_widgets();
     menu.render(s[0], buf, &mut state.menu);
 
     let status = StatusLine::new()
         .layout([Constraint::Fill(1), Constraint::Length(14)])
-        .styles(vec![
-            if state.menu.is_focused() {
-                ctx.theme.status_base()
-            } else {
-                ctx.theme.status_base_hidden()
-            }, //
-            if state.menu.is_focused() {
-                ctx.theme.status_base()
-            } else {
-                ctx.theme.status_base_hidden()
-            },
-        ]);
+        .styles_ext(if state.menu.is_focused() {
+            ctx.theme.style(WidgetStyle::STATUSLINE)
+        } else {
+            ctx.theme.style(WidgetStyle::STATUSLINE_HIDDEN)
+        });
     status.render(s[1], buf, &mut state.status);
 
     // some overlays

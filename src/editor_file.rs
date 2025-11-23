@@ -1,5 +1,6 @@
 use crate::doc_type::{DocType, DocTypes};
 use crate::global::event::MDEvent;
+use crate::global::theme::MDWidgets;
 use crate::global::GlobalState;
 use anyhow::{anyhow, Error};
 use log::warn;
@@ -9,6 +10,7 @@ use rat_markdown::MarkDown;
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{Control, SalsaContext};
 use rat_theme4::palette::Colors;
+use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::event::util::MouseFlags;
 use rat_widget::event::{ct_event, try_flow, ConsumedEvent, HandleEvent, TextOutcome};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
@@ -71,116 +73,29 @@ pub fn render(
                 .borders(Borders::RIGHT),
         )
         .vscroll(Scroll::new().start_margin(start_margin))
-        .styles(theme.textarea_style_doc())
-        .text_style_map(text_style(ctx))
+        .styles(theme.style(WidgetStyle::TEXT_DOCUMENT))
+        .text_style_map(theme.style::<HashMap<usize, Style>>(WidgetStyle::TEXT_STYLES))
         .render(text_area, buf, &mut state.edit);
 
     if state.show_linenr {
         let line_nr_area = Rect::new(area.x, area.y, ln_width, area.height);
         LineNumbers::new()
             .with_textarea(&state.edit)
-            .styles(theme.line_nr_style_doc())
+            .styles(theme.style(WidgetStyle::LINE_NR))
             .render(line_nr_area, buf, &mut state.linenr);
     } else {
         let line_nr_area = Rect::new(area.x, area.y, ln_width, area.height);
-        fill_buf_area(buf, line_nr_area, " ", theme.doc_base());
+        fill_buf_area(
+            buf,
+            line_nr_area,
+            " ",
+            theme.style_style(Style::CONTAINER_BASE),
+        );
     }
 
     ctx.set_screen_cursor(state.edit.screen_cursor());
 
     Ok(())
-}
-
-fn text_style(ctx: &GlobalState) -> HashMap<usize, Style> {
-    let sc = ctx.palette();
-
-    let mut map = HashMap::new();
-
-    //let base = sc.white[0];
-    map.insert(
-        MDStyle::Heading1.into(),
-        sc.fg_style(Colors::White, 3).underlined(),
-    );
-    map.insert(
-        MDStyle::Heading2.into(),
-        sc.fg_style(Colors::White, 3).underlined(),
-    );
-    map.insert(
-        MDStyle::Heading3.into(),
-        sc.fg_style(Colors::White, 2).underlined(),
-    );
-    map.insert(
-        MDStyle::Heading4.into(),
-        sc.fg_style(Colors::White, 2).underlined(),
-    );
-    map.insert(
-        MDStyle::Heading5.into(),
-        sc.fg_style(Colors::White, 1).underlined(),
-    );
-    map.insert(
-        MDStyle::Heading6.into(),
-        sc.fg_style(Colors::White, 1).underlined(),
-    );
-
-    map.insert(MDStyle::Paragraph.into(), Style::new());
-    map.insert(MDStyle::BlockQuote.into(), sc.fg_style(Colors::Orange, 2));
-    map.insert(MDStyle::CodeBlock.into(), sc.fg_style(Colors::RedPink, 2));
-    map.insert(MDStyle::MathDisplay.into(), sc.fg_style(Colors::RedPink, 2));
-    map.insert(MDStyle::Rule.into(), sc.fg_style(Colors::White, 2));
-    map.insert(MDStyle::Html.into(), sc.fg_style(Colors::Gray, 2));
-
-    map.insert(
-        MDStyle::Link.into(),
-        sc.fg_style(Colors::BlueGreen, 1).underlined(),
-    );
-    map.insert(MDStyle::LinkDef.into(), sc.fg_style(Colors::BlueGreen, 1));
-    map.insert(
-        MDStyle::Image.into(),
-        sc.fg_style(Colors::BlueGreen, 1).underlined(),
-    );
-    map.insert(
-        MDStyle::FootnoteDefinition.into(),
-        sc.fg_style(Colors::BlueGreen, 2),
-    );
-    map.insert(
-        MDStyle::FootnoteReference.into(),
-        sc.fg_style(Colors::BlueGreen, 1).underlined(),
-    );
-
-    map.insert(MDStyle::List.into(), Style::new());
-    map.insert(MDStyle::Item.into(), Style::new());
-    map.insert(
-        MDStyle::TaskListMarker.into(),
-        sc.fg_style(Colors::Orange, 1),
-    );
-    map.insert(MDStyle::ItemTag.into(), sc.fg_style(Colors::Orange, 1));
-    map.insert(MDStyle::DefinitionList.into(), Style::new());
-    map.insert(
-        MDStyle::DefinitionListTitle.into(),
-        sc.fg_style(Colors::Orange, 2),
-    );
-    map.insert(
-        MDStyle::DefinitionListDefinition.into(),
-        sc.fg_style(Colors::Orange, 1),
-    );
-
-    map.insert(MDStyle::Table.into(), Style::new());
-    map.insert(MDStyle::TableHead.into(), sc.fg_style(Colors::Orange, 2));
-    map.insert(MDStyle::TableRow.into(), Style::new());
-    map.insert(MDStyle::TableCell.into(), Style::new());
-
-    map.insert(MDStyle::Emphasis.into(), Style::new().italic());
-    map.insert(MDStyle::Strong.into(), Style::new().bold());
-    map.insert(MDStyle::Strikethrough.into(), Style::new().crossed_out());
-
-    map.insert(MDStyle::CodeInline.into(), sc.fg_style(Colors::RedPink, 1));
-    map.insert(MDStyle::MathInline.into(), sc.fg_style(Colors::RedPink, 1));
-    map.insert(
-        MDStyle::MetadataBlock.into(),
-        sc.fg_style(Colors::Orange, 1),
-    );
-
-    map
 }
 
 impl Clone for MDFileState {

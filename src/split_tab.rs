@@ -6,11 +6,13 @@ use anyhow::Error;
 use log::error;
 use rat_salsa::timer::TimerDef;
 use rat_salsa::{Control, SalsaContext};
+use rat_theme4::WidgetStyle;
 use rat_widget::event::{ct_event, try_flow, ConsumedEvent, HandleEvent, Regular, TabbedOutcome};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::splitter::{Split, SplitState, SplitType};
 use rat_widget::tabbed::{TabType, Tabbed, TabbedState};
 use rat_widget::text::undo_buffer::UndoEntry;
+use rat_widget::text::TextStyle;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Style, Stylize};
@@ -55,12 +57,15 @@ pub fn render(
         .constraints(vec![Constraint::Fill(1); state.split_tab.len()])
         .mark_offset(0)
         .split_type(SplitType::Scroll)
-        .styles(ctx.theme.split_style())
+        .styles(ctx.theme.style(WidgetStyle::SPLIT))
         .into_widgets();
     split_layout.render(area, buf, &mut state.split);
 
     if state.split.widget_areas.is_empty() {
-        buf.set_style(area, ctx.theme.textarea_style_doc().style);
+        buf.set_style(
+            area,
+            ctx.theme.style::<TextStyle>(WidgetStyle::TEXTAREA).style,
+        );
     }
 
     let max_idx_split = state.split.widget_areas.len().saturating_sub(1);
@@ -68,7 +73,7 @@ pub fn render(
         Tabbed::new()
             .tab_type(TabType::Glued)
             .closeable(true)
-            .styles(ctx.theme.tabbed_style())
+            .styles(ctx.theme.style(WidgetStyle::TABBED))
             .tabs(state.split_tab_file[idx_split].iter().map(|v| {
                 let title = format!(
                     "{}{}",

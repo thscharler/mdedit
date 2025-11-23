@@ -3,6 +3,7 @@ use crate::global::GlobalState;
 use anyhow::Error;
 use rat_dialog::WindowControl;
 use rat_salsa::SalsaContext;
+use rat_theme4::WidgetStyle;
 use rat_widget::event::{Dialog, FileOutcome, HandleEvent, Outcome};
 use rat_widget::file_dialog::{FileDialog, FileDialogState};
 use rat_widget::layout::layout_middle;
@@ -29,7 +30,7 @@ pub fn render(
     );
 
     FileDialog::new()
-        .styles(ctx.theme.file_dialog_style())
+        .styles(ctx.theme.style(WidgetStyle::FILE_DIALOG))
         .render(area, buf, state);
 
     ctx.set_screen_cursor(state.screen_cursor());
