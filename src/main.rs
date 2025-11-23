@@ -69,7 +69,7 @@ fn main() -> Result<(), Error> {
         load
     };
 
-    let theme = create_mdedit_theme("Imperial Dark");
+    let theme = create_mdedit_theme(&config.theme);
     let mut global = GlobalState::new(config, theme);
 
     let mut state = Scenery::default();

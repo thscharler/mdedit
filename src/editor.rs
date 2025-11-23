@@ -41,7 +41,7 @@ pub fn render(
             Constraint::Length(ctx.cfg.file_split_at),
             Constraint::Fill(1),
         ])
-        .split_type(SplitType::FullEmpty)
+        .split_type(SplitType::FullPlain)
         .into_widgets();
     split_layout.render(area, buf, &mut state.split_files);
 

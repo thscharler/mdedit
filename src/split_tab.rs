@@ -1,6 +1,7 @@
 use crate::editor_file;
 use crate::editor_file::MDFileState;
 use crate::global::event::{MDEvent, MDImmediate};
+use crate::global::theme::MDWidgets;
 use crate::global::GlobalState;
 use anyhow::Error;
 use log::error;
@@ -17,7 +18,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::style::{Style, Stylize};
 use ratatui::text::Line;
-use ratatui::widgets::StatefulWidget;
+use ratatui::widgets::{Block, Borders, StatefulWidget};
 use std::cmp::max;
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -55,7 +56,7 @@ pub fn render(
 ) -> Result<(), Error> {
     let (split_layout, split) = Split::horizontal()
         .constraints(vec![Constraint::Fill(1); state.split_tab.len()])
-        .mark_offset(0)
+        .mark_offset(2)
         .split_type(SplitType::Scroll)
         .styles(ctx.theme.style(WidgetStyle::SPLIT))
         .into_widgets();
@@ -64,15 +65,18 @@ pub fn render(
     if state.split.widget_areas.is_empty() {
         buf.set_style(
             area,
-            ctx.theme.style::<TextStyle>(WidgetStyle::TEXTAREA).style,
+            ctx.theme
+                .style::<TextStyle>(WidgetStyle::TEXT_DOCUMENT)
+                .style,
         );
     }
 
     let max_idx_split = state.split.widget_areas.len().saturating_sub(1);
     for (idx_split, edit_area) in state.split.widget_areas.iter().enumerate() {
         Tabbed::new()
-            .tab_type(TabType::Glued)
+            .tab_type(TabType::Attached)
             .closeable(true)
+            .block(Block::bordered().borders(Borders::TOP | Borders::RIGHT))
             .styles(ctx.theme.style(WidgetStyle::TABBED))
             .tabs(state.split_tab_file[idx_split].iter().map(|v| {
                 let title = format!(
@@ -86,7 +90,7 @@ pub fn render(
 
         if let Some(idx_tab) = state.split_tab[idx_split].selected() {
             editor_file::render(
-                if max_idx_split == idx_split { 0 } else { 1 },
+                0, // if max_idx_split == idx_split { 0 } else { 1 },
                 state.split_tab[idx_split].widget_area,
                 buf,
                 &mut state.split_tab_file[idx_split][idx_tab],

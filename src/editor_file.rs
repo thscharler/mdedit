@@ -54,7 +54,7 @@ pub fn render(
     let theme = &ctx.theme;
 
     let ln_width = if state.show_linenr {
-        LineNumbers::width_for(state.edit.vertical_offset(), 0, (0, 0), 0)
+        LineNumbers::width_for(state.edit.vertical_offset(), 0, (0, 1), 0)
     } else {
         1
     };
@@ -81,6 +81,7 @@ pub fn render(
         let line_nr_area = Rect::new(area.x, area.y, ln_width, area.height);
         LineNumbers::new()
             .with_textarea(&state.edit)
+            .margin((0, 1))
             .styles(theme.style(WidgetStyle::LINE_NR))
             .render(line_nr_area, buf, &mut state.linenr);
     } else {
