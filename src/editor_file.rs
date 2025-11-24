@@ -66,10 +66,7 @@ pub fn render(
         area.height,
     );
 
-    let mut style = theme.style::<TextStyle>(WidgetStyle::TEXT_DOCUMENT);
-    style.style = theme.style_style(Style::DOCUMENT_BASE);
-    style.focus = Some(theme.style_style(Style::DOCUMENT_BASE));
-
+    let style = theme.style::<TextStyle>(WidgetStyle::TEXT_DOCUMENT);
     TextArea::new()
         .block(
             Block::new()
