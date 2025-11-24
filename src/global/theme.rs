@@ -1,4 +1,3 @@
-use log::debug;
 use rat_markdown::styles::MDStyle;
 use rat_theme4::palette::{ColorIdx, Colors};
 use rat_theme4::theme::{Category, SalsaTheme};
@@ -6,16 +5,13 @@ use rat_theme4::{create_theme, RatWidgetColor, StyleName, WidgetStyle};
 use rat_widget::choice::ChoiceStyle;
 use rat_widget::menu::MenuStyle;
 use rat_widget::scrolled::{ScrollStyle, ScrollSymbols};
-use rat_widget::statusline::StatusLineStyle;
 use rat_widget::text::TextStyle;
 use ratatui::style::{Color, Style, Stylize};
 use ratatui::widgets::{Block, Borders};
 use std::collections::HashMap;
-use std::mem;
 
 pub trait MDWidgets {
     const MENU_HIDDEN: &'static str = "md+menu-hidden";
-    const STATUSLINE_HIDDEN: &'static str = "md+statusline-hidden";
     const CHOICE_TOOLS: &'static str = "md+choice-tools";
     const TEXT_DOCUMENT: &'static str = "md+text-document";
     const TEXT_STYLES: &'static str = "md+text-styles";
@@ -24,6 +20,7 @@ impl MDWidgets for WidgetStyle {}
 
 pub trait MDStyles {
     const TEXT_BASE: &'static str = "md+text-base";
+    const STATUS_HIDDEN: &'static str = "md+status-hidden";
 }
 impl MDStyles for Style {}
 
@@ -34,8 +31,6 @@ impl MDColor for Color {}
 
 pub fn create_mdedit_theme(name: &str) -> SalsaTheme {
     let mut theme = create_theme(name);
-
-    debug!("theme {:?} {:?}", theme.name, theme.cat);
 
     match theme.p.name.as_ref() {
         "EverForest Light" => {
@@ -67,7 +62,12 @@ pub fn create_mdedit_theme(name: &str) -> SalsaTheme {
             theme.define_fn(WidgetStyle::TEXT_STYLES, |th| text_style_light(th));
 
             theme.define_fn(WidgetStyle::MENU_HIDDEN, menu_hidden);
-            theme.define_fn(WidgetStyle::STATUSLINE_HIDDEN, statusline_hidden);
+            theme.define_style(
+                Style::STATUS_HIDDEN,
+                theme
+                    .p
+                    .fg_bg_style_alias(Color::HIDDEN_FG, Color::STATUS_BASE_BG),
+            );
             theme.define_fn(WidgetStyle::CHOICE_TOOLS, choice_tools);
         }
         Category::Dark | Category::Shell | _ => {
@@ -76,7 +76,12 @@ pub fn create_mdedit_theme(name: &str) -> SalsaTheme {
             theme.define_fn(WidgetStyle::TEXT_STYLES, |th| text_style(th));
 
             theme.define_fn(WidgetStyle::MENU_HIDDEN, menu_hidden);
-            theme.define_fn(WidgetStyle::STATUSLINE_HIDDEN, statusline_hidden);
+            theme.define_style(
+                Style::STATUS_HIDDEN,
+                theme
+                    .p
+                    .fg_bg_style_alias(Color::HIDDEN_FG, Color::STATUS_BASE_BG),
+            );
             theme.define_fn(WidgetStyle::CHOICE_TOOLS, choice_tools);
         }
     }
@@ -153,14 +158,6 @@ fn choice_tools(th: &SalsaTheme) -> ChoiceStyle {
     }
 }
 
-fn statusline_hidden(th: &SalsaTheme) -> StatusLineStyle {
-    let mut m = th.style::<StatusLineStyle>(WidgetStyle::STATUSLINE);
-    for s in &mut m.styles {
-        *s = mem::take(s).fg(th.p.color_alias(Color::HIDDEN_FG));
-    }
-    m
-}
-
 fn menu_hidden(th: &SalsaTheme) -> MenuStyle {
     let mut m = th.style::<MenuStyle>(WidgetStyle::MENU);
     m.style = m.style.fg(th.p.color_alias(Color::HIDDEN_FG));
@@ -173,7 +170,7 @@ fn text_document(th: &SalsaTheme) -> TextStyle {
         scroll: Some(th.style(WidgetStyle::SCROLL)),
         border_style: Some(th.style(Style::CONTAINER_BORDER_FG)),
         focus: Some(th.style_style(Style::TEXT_BASE)),
-        select: Some(th.style_style(Style::TEXT_SELECT)),
+        select: Some(th.style_style(Style::INPUT_SELECT)),
         ..Default::default()
     }
 }

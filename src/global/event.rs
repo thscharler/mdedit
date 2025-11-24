@@ -20,7 +20,7 @@ pub enum MDEvent {
     // msg-dialog
     Message(String),
     // status flags
-    Status(usize, String),
+    Info(String),
     //
     NoOp,
 

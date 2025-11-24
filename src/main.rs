@@ -4,7 +4,7 @@ use crate::dlg::config_dlg;
 use crate::editor::MDEditState;
 use crate::fsys::FileSysStructure;
 use crate::global::event::MDEvent;
-use crate::global::theme::{create_mdedit_theme, MDWidgets};
+use crate::global::theme::{create_mdedit_theme, MDStyles, MDWidgets};
 use crate::global::GlobalState;
 use anyhow::Error;
 use crossbeam::atomic::AtomicCell;
@@ -16,7 +16,7 @@ use rat_dialog::WindowControl;
 use rat_salsa::poll::{PollCrossterm, PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
-use rat_theme4::WidgetStyle;
+use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::event::{ct_event, try_flow, HandleEvent, MenuOutcome, Popup};
 use rat_widget::file_dialog::FileDialogState;
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
@@ -25,10 +25,13 @@ use rat_widget::menu::{MenuBuilder, MenuStructure, Menubar, MenubarState, Separa
 use rat_widget::msgdialog::MsgDialogState;
 use rat_widget::popup::Placement;
 use rat_widget::statusline::{StatusLine, StatusLineState};
+use rat_widget::statusline_stacked::StatusLineStacked;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::StatefulWidget;
-use ratatui::widgets::Block;
+use ratatui::style::Style;
+use ratatui::text::Line;
+use ratatui::widgets::{Block, Widget};
 use std::cmp::max;
 use std::env::args;
 use std::fs::create_dir_all;
@@ -158,7 +161,8 @@ impl<'a> MenuStructure<'a> for Menu {
 pub struct Scenery {
     pub editor: MDEditState,
     pub menu: MenubarState,
-    pub status: StatusLineState,
+    pub short: String,
+    pub info: String,
     pub clear_status: TimerHandle,
 
     pub window_cmd: bool,
@@ -169,7 +173,8 @@ impl Default for Scenery {
         let s = Self {
             editor: MDEditState::default(),
             menu: MenubarState::named("menu"),
-            status: Default::default(),
+            short: Default::default(),
+            info: Default::default(),
             clear_status: Default::default(),
             window_cmd: false,
         };
@@ -188,11 +193,6 @@ pub fn render(
         Constraint::Length(1),
     ])
     .split(area);
-    let s = Layout::horizontal([
-        Constraint::Percentage(61), //
-        Constraint::Percentage(39),
-    ])
-    .split(r[1]);
 
     editor::render(r[0], buf, &mut state.editor, ctx)?;
 
@@ -215,14 +215,16 @@ pub fn render(
         .into_widgets();
     menu.render(s[0], buf, &mut state.menu);
 
-    let status = StatusLine::new()
-        .layout([Constraint::Fill(1), Constraint::Length(14)])
-        .styles_ext(if state.menu.is_focused() {
-            ctx.theme.style(WidgetStyle::STATUSLINE)
+    StatusLineStacked::new()
+        .start_bare(state.short.as_str())
+        .end_bare("]")
+        .end(state.info.as_str(), "[")
+        .style(if state.menu.is_focused() {
+            ctx.theme.style(Style::STATUS_BASE)
         } else {
-            ctx.theme.style(WidgetStyle::STATUSLINE_HIDDEN)
-        });
-    status.render(s[1], buf, &mut state.status);
+            ctx.theme.style(Style::STATUS_HIDDEN)
+        })
+        .render(s[1], buf);
 
     // some overlays
     Hover::new().render(Rect::default(), buf, &mut ctx.hover);
@@ -256,9 +258,7 @@ pub fn init(state: &mut Scenery, ctx: &mut GlobalState) -> Result<(), Error> {
     editor::init(&mut state.editor, ctx)?;
 
     state.menu.bar.select(Some(0));
-    state
-        .status
-        .status(0, format!("mdedit {}", env!("CARGO_PKG_VERSION")));
+    state.short = format!("mdedit {}", env!("CARGO_PKG_VERSION"));
     state.clear_status = ctx.add_timer(TimerDef::new().timer(Duration::from_secs(1)));
 
     fn spawn_load_dir(path: PathBuf, ctx: &mut GlobalState) -> Result<(), SendError<()>> {
@@ -441,9 +441,9 @@ pub fn event(
                 Control::Quit
             });
         }
-        MDEvent::Status(n, s) => {
+        MDEvent::Info(s) => {
             try_flow!({
-                state.status.status(*n, s);
+                state.info = s.clone();
                 Control::Changed
             });
         }
@@ -485,7 +485,7 @@ pub fn event(
         }
         MDEvent::TimeOut(t) => {
             try_flow!(if t.handle == state.clear_status {
-                state.status.status(0, "");
+                state.short = Default::default();
                 Control::Changed
             } else {
                 Control::Continue
@@ -569,9 +569,9 @@ fn window_cmd(
     };
 
     if state.window_cmd {
-        ctx.queue(Control::Event(MDEvent::Status(1, "^W".into())));
+        ctx.queue(Control::Event(MDEvent::Info("^W".into())));
     } else {
-        ctx.queue(Control::Event(MDEvent::Status(1, "".into())));
+        ctx.queue(Control::Event(MDEvent::Info("".into())));
     }
 
     // don't let anything through to the application.

@@ -465,10 +465,10 @@ impl MDFileState {
             } else {
                 sel.end.y.saturating_sub(sel.start.y) + 1
             };
-            ctx.queue(Control::Event(MDEvent::Status(
-                1,
-                format!("{}:{}|{}", cursor.x, cursor.y, sel_len),
-            )));
+            ctx.queue(Control::Event(MDEvent::Info(format!(
+                "{}:{}|{}",
+                cursor.x, cursor.y, sel_len
+            ))));
         }
     }
 
