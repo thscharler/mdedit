@@ -17,7 +17,7 @@ use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus, Navigation};
 use rat_widget::line_number::{LineNumberState, LineNumbers};
 use rat_widget::scrolled::Scroll;
 use rat_widget::text::clipboard::{Clipboard, ClipboardError};
-use rat_widget::text::HasScreenCursor;
+use rat_widget::text::{HasScreenCursor, TextStyle};
 use rat_widget::textarea::{TextArea, TextAreaState, TextWrap};
 use rat_widget::util::fill_buf_area;
 use ratatui::buffer::Buffer;
@@ -66,6 +66,10 @@ pub fn render(
         area.height,
     );
 
+    let mut style = theme.style::<TextStyle>(WidgetStyle::TEXT_DOCUMENT);
+    style.style = theme.style_style(Style::DOCUMENT_BASE);
+    style.focus = Some(theme.style_style(Style::DOCUMENT_BASE));
+
     TextArea::new()
         .block(
             Block::new()
@@ -73,7 +77,7 @@ pub fn render(
                 .borders(Borders::RIGHT),
         )
         .vscroll(Scroll::new().start_margin(start_margin))
-        .styles(theme.style(WidgetStyle::TEXT_DOCUMENT))
+        .styles(style)
         .text_style_map(theme.style::<HashMap<usize, Style>>(WidgetStyle::TEXT_STYLES))
         .render(text_area, buf, &mut state.edit);
 

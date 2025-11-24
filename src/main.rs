@@ -196,6 +196,12 @@ pub fn render(
 
     editor::render(r[0], buf, &mut state.editor, ctx)?;
 
+    let s = Layout::horizontal([
+        Constraint::Percentage(61), //
+        Constraint::Percentage(39),
+    ])
+    .split(r[1]);
+
     let menu_struct = Menu {
         show_ctrl: ctx.cfg.show_ctrl,
         show_break: ctx.cfg.show_break,
