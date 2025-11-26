@@ -30,31 +30,85 @@ pub trait MDColor {
 }
 impl MDColor for Color {}
 
+mod base16;
+mod black_white;
+mod blackout;
+mod everforest;
+mod everforest_light;
+mod imperial;
+mod imperial_light;
+mod material;
+mod monekai;
+mod monochrome;
+mod nord;
+mod ocean;
+mod oxocarbon;
+mod radium;
+mod reds;
+mod rust;
+mod rust_light;
+mod shell;
+mod solarized;
+mod sunrisebreeze_light;
+mod tailwind;
+mod tailwind_light;
+mod tundra;
+mod vscode;
+
 pub fn create_mdedit_theme(name: &str) -> SalsaTheme {
     let mut theme = create_theme(name);
 
-    match theme.p.name.as_ref() {
-        "EverForest Light" => {
-            theme
-                .p
-                .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 3));
-        }
-        "SunriseBreeze Light" => {
-            theme
-                .p
-                .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 3));
-        }
-        "Nord" => {
-            theme
-                .p
-                .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::DeepBlue, 0));
-        }
-        _ => {
-            theme
-                .p
-                .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 0));
-        }
+    for patch in [
+        everforest::patch,
+        everforest_light::patch,
+        blackout::patch,
+        black_white::patch,
+        imperial::patch,
+        material::patch,
+        monekai::patch,
+        base16::patch,
+        imperial_light::patch,
+        monochrome::patch,
+        nord::patch,
+        ocean::patch,
+        oxocarbon::patch,
+        radium::patch,
+        reds::patch,
+        rust::patch,
+        rust_light::patch,
+        shell::patch,
+        solarized::patch,
+        sunrisebreeze_light::patch,
+        tailwind::patch,
+        tailwind_light::patch,
+        tundra::patch,
+        vscode::patch,
+    ] {
+        patch(&mut theme.p);
     }
+
+    // match theme.p.name.as_ref() {
+    //     "EverForest Light" => {
+    //         theme
+    //             .p
+    //             .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 3));
+    //     }
+    //     "SunriseBreeze Light" => {
+    //         theme
+    //             .p
+    //             .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 3));
+    //     }
+    //     "Nord" => {
+    //         theme
+    //             .p
+    //             .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::DeepBlue, 0));
+    //     }
+    //     _ => {
+    //         theme
+    //             .p
+    //             .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 0));
+    //     }
+    // }
 
     debug!("document base{:?}", theme.style_style(Style::DOCUMENT_BASE));
     match theme.cat {
