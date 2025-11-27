@@ -1,3 +1,11 @@
+# 0.11.0
+
+* add patching the theme
+
+# 0.10.0
+
+* update to rat-theme4
+
 # 0.9.0
 
 * upgrade rat-text to 2.0.0
