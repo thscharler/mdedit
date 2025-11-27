@@ -4,7 +4,7 @@ use rat_theme4::palette::{ColorIdx, Colors, Palette};
 
 pub fn patch(pal: &mut Palette) {
     if pal.name.as_ref() == "Tailwind Light" {
-        pal.add_aliased("md+hidden", ColorIdx(Colors::Gray, 2));
+        pal.add_aliased("md+hidden", ColorIdx(Colors::Gray, 3));
     }
 }
 

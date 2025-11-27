@@ -1,0 +1,6 @@
+[palette-patch]
+name=Solarized
+docs=credit https://github.com/altercation/solarized/tree/master/vim-colors-solarized
+
+[reference]
+md+hidden=gray:0

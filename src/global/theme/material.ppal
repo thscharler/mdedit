@@ -1,0 +1,6 @@
+[palette-patch]
+name=Material
+docs=Credits to original theme https://github.com/marko-cerovac/material.nvim for existing\n-
+
+[reference]
+md+hidden=gray:0

@@ -1,0 +1,6 @@
+[palette-patch]
+name=Tundra
+docs=An adaption of nvchad's tundra theme.\n-- Thanks to original theme for existing <https://github.com/sam4llis/nvim-tundra>\n
+
+[reference]
+md+hidden=gray:0
