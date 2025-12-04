@@ -249,11 +249,11 @@ impl HasFocus for Scenery {
     }
 
     fn focus(&self) -> FocusFlag {
-        unimplemented!("don't use this")
+        unimplemented!("not in use")
     }
 
     fn area(&self) -> Rect {
-        unimplemented!("don't use this")
+        unimplemented!("not in use")
     }
 }
 
