@@ -1,7 +1,6 @@
-use log::debug;
 use rat_markdown::styles::MDStyle;
-use rat_theme4::palette::{ColorIdx, Colors};
-use rat_theme4::theme::{Category, SalsaTheme};
+use rat_theme4::palette::Colors;
+use rat_theme4::theme::SalsaTheme;
 use rat_theme4::{create_theme, RatWidgetColor, StyleName, WidgetStyle};
 use rat_widget::choice::ChoiceStyle;
 use rat_widget::menu::MenuStyle;
@@ -110,9 +109,8 @@ pub fn create_mdedit_theme(name: &str) -> SalsaTheme {
     //     }
     // }
 
-    debug!("document base{:?}", theme.style_style(Style::DOCUMENT_BASE));
-    match theme.cat {
-        Category::Light => {
+    match theme.theme.as_str() {
+        "Light" => {
             theme.define_style(Style::TEXT_BASE, theme.style_style(Style::DOCUMENT_BASE));
             theme.define_fn(WidgetStyle::TEXT_DOCUMENT, text_document);
             theme.define_fn(WidgetStyle::TEXT_STYLES, |th| text_style_light(th));
@@ -126,7 +124,7 @@ pub fn create_mdedit_theme(name: &str) -> SalsaTheme {
             );
             theme.define_fn(WidgetStyle::CHOICE_TOOLS, choice_tools);
         }
-        Category::Dark | Category::Shell | _ => {
+        "Dark" | "Shell" | _ => {
             theme.define_style(Style::TEXT_BASE, theme.style_style(Style::DOCUMENT_BASE));
             theme.define_fn(WidgetStyle::TEXT_DOCUMENT, text_document);
             theme.define_fn(WidgetStyle::TEXT_STYLES, |th| text_style(th));
