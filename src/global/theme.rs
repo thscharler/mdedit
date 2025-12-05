@@ -86,29 +86,6 @@ pub fn create_mdedit_theme(name: &str) -> SalsaTheme {
         patch(&mut theme.p);
     }
 
-    // match theme.p.name.as_ref() {
-    //     "EverForest Light" => {
-    //         theme
-    //             .p
-    //             .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 3));
-    //     }
-    //     "SunriseBreeze Light" => {
-    //         theme
-    //             .p
-    //             .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 3));
-    //     }
-    //     "Nord" => {
-    //         theme
-    //             .p
-    //             .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::DeepBlue, 0));
-    //     }
-    //     _ => {
-    //         theme
-    //             .p
-    //             .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 0));
-    //     }
-    // }
-
     match theme.theme.as_str() {
         "Light" => {
             theme.define_style(Style::TEXT_BASE, theme.style_style(Style::DOCUMENT_BASE));
