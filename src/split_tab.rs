@@ -71,7 +71,7 @@ pub fn render(
         );
     }
 
-    let max_idx_split = state.split.widget_areas.len().saturating_sub(1);
+    // let max_idx_split = state.split.widget_areas.len().saturating_sub(1);
     for (idx_split, edit_area) in state.split.widget_areas.iter().enumerate() {
         Tabbed::new()
             .tab_type(TabType::Attached)

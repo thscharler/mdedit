@@ -1,7 +1,7 @@
 use rat_markdown::styles::MDStyle;
 use rat_theme4::palette::Colors;
 use rat_theme4::theme::SalsaTheme;
-use rat_theme4::{create_theme, RatWidgetColor, StyleName, WidgetStyle};
+use rat_theme4::{create_salsa_theme, RatWidgetColor, StyleName, WidgetStyle};
 use rat_widget::choice::ChoiceStyle;
 use rat_widget::menu::MenuStyle;
 use rat_widget::scrolled::{ScrollStyle, ScrollSymbols};
@@ -55,7 +55,7 @@ mod tundra;
 mod vscode;
 
 pub fn create_mdedit_theme(name: &str) -> SalsaTheme {
-    let mut theme = create_theme(name);
+    let mut theme = create_salsa_theme(name);
 
     for patch in [
         everforest::patch,
