@@ -1,3 +1,7 @@
+# 0.12.0
+
+* update to rat-theme4 latest changes
+
 # 0.11.0
 
 * add patching the theme
