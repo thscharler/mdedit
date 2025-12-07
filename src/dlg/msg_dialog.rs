@@ -56,6 +56,8 @@ pub fn render_info(
                 .title_style(Style::new().fg(ctx.palette().color(Colors::BlueGreen, 0)))
                 .padding(Padding::new(1, 1, 1, 1)),
         )
+        .markdown(true)
+        .hide_paragraph_focus(true)
         .styles(ctx.theme.style(WidgetStyle::MSG_DIALOG))
         .render(area, buf, state);
 }
