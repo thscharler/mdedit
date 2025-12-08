@@ -1,3 +1,7 @@
+# 0.13.0
+
+* minor ui updates
+
 # 0.12.0
 
 * update to rat-theme4 latest changes
