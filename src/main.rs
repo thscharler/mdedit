@@ -511,7 +511,7 @@ fn store_config(state: &mut Scenery, ctx: &mut GlobalState) -> Control<MDEvent> 
 
 fn show_message(msg: &str, ctx: &mut GlobalState) -> Control<MDEvent> {
     if let Some(n) = ctx.dialogs.top::<MsgDialogState>() {
-        let dlg = ctx.dialogs.get::<MsgDialogState>(n);
+        let dlg = ctx.dialogs.get::<MsgDialogState>(n).expect("msg-dialog");
         dlg.append(msg);
     } else {
         let state = MsgDialogState::new_active("Information", msg);
