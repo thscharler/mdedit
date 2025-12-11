@@ -1,3 +1,11 @@
+# 1.0.0
+
+Go 1.0
+
+I won't to anything major in the near future, and it works as is.
+
+* minor fixes for upstream changes.
+
 # 0.13.0
 
 * minor ui updates

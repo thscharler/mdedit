@@ -1,6 +1,6 @@
 [package]
 name = "mdedit"
-version = "0.13.0"
+version = "1.0.0"
 edition = "2021"
 description = "markdown editor with ratatui and rat-salsa"
 license = "MIT/Apache-2.0"
