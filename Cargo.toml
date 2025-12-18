@@ -28,7 +28,7 @@ crossbeam = "0.8"
 sys-locale = "0.3"
 try_as = "0.1"
 
-rat-salsa = { version = "2.6", path = "../rat-salsa/rat-salsa" }
+rat-salsa = { version = "3.0", path = "../rat-salsa/rat-salsa" }
 rat-dialog = { version = "1.0", path = "../rat-salsa/rat-dialog" }
 rat-widget = { version = "2.10", path = "../rat-salsa/rat-widget", features = ["user_directories"] }
 rat-theme4 = { version = "4.3", path = "../rat-salsa/rat-theme4" }
