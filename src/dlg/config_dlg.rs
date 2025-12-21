@@ -4,7 +4,7 @@ use crate::global::GlobalState;
 use anyhow::Error;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rat_dialog::WindowControl;
-use rat_salsa::SalsaContext;
+use crate::rat_salsa::SalsaContext;
 use rat_theme4::{salsa_themes, StyleName, WidgetStyle};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};

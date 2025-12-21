@@ -3,7 +3,7 @@ use crate::global::event::MDEvent;
 use crate::global::theme::MDWidgets;
 use crate::global::GlobalState;
 use anyhow::Error;
-use rat_salsa::{Control, SalsaContext};
+use crate::rat_salsa::{Control, SalsaContext};
 use rat_theme4::palette::Colors;
 use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};

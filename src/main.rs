@@ -1,3 +1,8 @@
+#[cfg(feature = "crossterm")]
+pub(crate) use rat_salsa;
+#[cfg(feature = "wgpu")]
+pub(crate) use rat_salsa_wgpu as rat_salsa;
+
 use crate::cfg::MDConfig;
 use crate::config_dlg::ConfigDialogState;
 use crate::dlg::config_dlg;
@@ -13,7 +18,11 @@ use dirs::cache_dir;
 use dlg::{file_dlg, msg_dialog};
 use log::error;
 use rat_dialog::WindowControl;
-use rat_salsa::poll::{PollCrossterm, PollQuit, PollRendered, PollTasks, PollTimers};
+#[cfg(feature = "wgpu")]
+use rat_salsa::event_type::convert_crossterm::ConvertCrossterm;
+#[cfg(feature = "crossterm")]
+use rat_salsa::poll::PollCrossterm;
+use rat_salsa::poll::{PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
 use rat_theme4::{StyleName, WidgetStyle};
@@ -82,6 +91,18 @@ fn main() -> Result<(), Error> {
         error,
         &mut global,
         &mut state,
+        #[cfg(feature = "wgpu")]
+        RunConfig::new(ConvertCrossterm::new())?
+            .font_family("JetBrainsMono Nerd Font Mono")
+            .font_size(20.)
+            .rapid_blink_millis(200)
+            .poll(PollRendered)
+            .poll(PollTasks::default())
+            .poll(PollTimers::default())
+            // .poll(PollTick::new(0, 200))
+            .poll(PollRendered)
+            .poll(PollQuit),
+        #[cfg(feature = "crossterm")]
         RunConfig::default()?
             .poll(PollCrossterm)
             .poll(PollTasks::default())
@@ -754,8 +775,18 @@ fn setup_logging() -> Result<(), Error> {
 
         _ = fs::remove_file(&log_file);
         fern::Dispatch::new()
-            .format(|out, message, _record| {
-                out.finish(format_args!("{}", message)) //
+            .format(|out, message, record| {
+                // if record.target() == "rat_salsa_wgpu::framework" {
+                //     out.finish(format_args!("{}", message)) //
+                // }
+                if record.target().starts_with("wgpu_core::")
+                    || record.target().starts_with("wgpu_hal::")
+                    || record.target().starts_with("naga::")
+                {
+                    // noop
+                } else {
+                    out.finish(format_args!("{}: {}", record.target(), message))
+                }
             })
             .chain(fern::log_file(&log_file)?)
             .apply()?;

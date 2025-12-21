@@ -2,7 +2,7 @@ use crate::global::event::MDEvent;
 use crate::global::GlobalState;
 use anyhow::Error;
 use rat_dialog::WindowControl;
-use rat_salsa::SalsaContext;
+use crate::rat_salsa::SalsaContext;
 use rat_theme4::WidgetStyle;
 use rat_widget::event::{Dialog, FileOutcome, HandleEvent, Outcome};
 use rat_widget::file_dialog::{FileDialog, FileDialogState};

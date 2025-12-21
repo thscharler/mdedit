@@ -6,7 +6,7 @@ use crate::global::GlobalState;
 use crate::split_tab::SplitTabState;
 use crate::{file_list, split_tab};
 use anyhow::Error;
-use rat_salsa::{Control, SalsaContext};
+use crate::rat_salsa::{Control, SalsaContext};
 use rat_theme4::WidgetStyle;
 use rat_widget::event::{break_flow, HandleEvent, Outcome, Regular};
 use rat_widget::focus::{impl_has_focus, HasFocus};

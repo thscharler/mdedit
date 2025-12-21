@@ -1,7 +1,7 @@
 use crate::fsys::FileSysStructure;
 use crossbeam::atomic::AtomicCell;
-use rat_salsa::event::{QuitEvent, RenderedEvent};
-use rat_salsa::timer::TimeOut;
+use crate::rat_salsa::event::{QuitEvent, RenderedEvent};
+use crate::rat_salsa::timer::TimeOut;
 use std::path::PathBuf;
 use try_as::traits::TryAsRef;
 
