@@ -93,7 +93,7 @@ fn main() -> Result<(), Error> {
         &mut state,
         #[cfg(feature = "wgpu")]
         RunConfig::new(ConvertCrossterm::new())?
-            .font_family("JetBrainsMono Nerd Font Mono")
+            .font_family("GoMono Nerd Font")
             .font_size(20.)
             .window_title("MD Edit")
             .rapid_blink_millis(200)
@@ -777,9 +777,6 @@ fn setup_logging() -> Result<(), Error> {
         _ = fs::remove_file(&log_file);
         fern::Dispatch::new()
             .format(|out, message, record| {
-                // if record.target() == "rat_salsa_wgpu::framework" {
-                //     out.finish(format_args!("{}", message)) //
-                // }
                 if record.target().starts_with("wgpu_core::")
                     || record.target().starts_with("wgpu_hal::")
                     || record.target().starts_with("naga::")
