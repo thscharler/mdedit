@@ -3,10 +3,10 @@ use crate::editor_file::MDFileState;
 use crate::global::event::{MDEvent, MDImmediate};
 use crate::global::theme::MDWidgets;
 use crate::global::GlobalState;
-use anyhow::Error;
-use log::error;
 use crate::rat_salsa::timer::TimerDef;
 use crate::rat_salsa::{Control, SalsaContext};
+use anyhow::Error;
+use log::error;
 use rat_theme4::WidgetStyle;
 use rat_widget::event::{ct_event, try_flow, ConsumedEvent, HandleEvent, Regular, TabbedOutcome};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
@@ -76,7 +76,7 @@ pub fn render(
         Tabbed::new()
             .tab_type(TabType::Attached)
             .closeable(true)
-            .block(Block::bordered().borders(Borders::TOP | Borders::RIGHT))
+            .block(Block::bordered().borders(Borders::TOP))
             .styles(ctx.theme.style(WidgetStyle::TABBED))
             .tabs(state.split_tab_file[idx_split].iter().map(|v| {
                 let title = format!(
