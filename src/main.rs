@@ -93,7 +93,7 @@ fn main() -> Result<(), Error> {
         &mut state,
         #[cfg(feature = "wgpu")]
         RunConfig::new(ConvertCrossterm::new())?
-            .font_family("JetBrainsMono Nerd Font Mono")
+            .font_family("GoMono Nerd Font Mono")
             .font_size(20.)
             .window_title("MD Edit")
             .rapid_blink_millis(200)
