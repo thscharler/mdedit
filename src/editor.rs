@@ -3,14 +3,14 @@ use crate::file_list::FileListState;
 use crate::fsys::FileSysStructure;
 use crate::global::event::{MDEvent, MDImmediate};
 use crate::global::GlobalState;
+use crate::rat_salsa::{Control, SalsaContext};
 use crate::split_tab::SplitTabState;
 use crate::{file_list, split_tab};
 use anyhow::Error;
-use crate::rat_salsa::{Control, SalsaContext};
 use rat_theme4::WidgetStyle;
 use rat_widget::event::{break_flow, HandleEvent, Outcome, Regular};
 use rat_widget::focus::{impl_has_focus, HasFocus};
-use rat_widget::splitter::{Split, SplitState, SplitType};
+use rat_widget::splitter::{ResizeConstraint, Split, SplitState, SplitType};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Rect};
 use ratatui::widgets::StatefulWidget;
@@ -41,6 +41,7 @@ pub fn render(
             Constraint::Length(ctx.cfg.file_split_at),
             Constraint::Fill(1),
         ])
+        .resize_constraint(0, ResizeConstraint::Fixed)
         .split_type(SplitType::FullPlain)
         .into_widgets();
     split_layout.render(area, buf, &mut state.split_files);
