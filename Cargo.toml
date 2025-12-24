@@ -12,9 +12,9 @@ categories = ["text-editors"]
 exclude = [".idea/*", ".gitignore", "mdedit.gif"]
 
 [features]
-default = []
+default = ["wgpu"]
 wgpu = ["dep:rat-salsa-wgpu"]
-crossterm = ["dep:rat-salsa"]
+term = ["dep:rat-salsa"]
 
 [dependencies]
 crossterm = "0.28"

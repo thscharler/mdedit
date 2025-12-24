@@ -1,4 +1,4 @@
-#[cfg(feature = "crossterm")]
+#[cfg(feature = "term")]
 pub(crate) use rat_salsa;
 #[cfg(feature = "wgpu")]
 pub(crate) use rat_salsa_wgpu as rat_salsa;
@@ -20,7 +20,7 @@ use log::error;
 use rat_dialog::WindowControl;
 #[cfg(feature = "wgpu")]
 use rat_salsa::event_type::convert_crossterm::ConvertCrossterm;
-#[cfg(feature = "crossterm")]
+#[cfg(feature = "term")]
 use rat_salsa::poll::PollCrossterm;
 use rat_salsa::poll::{PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
@@ -93,7 +93,7 @@ fn main() -> Result<(), Error> {
         &mut state,
         #[cfg(feature = "wgpu")]
         RunConfig::new(ConvertCrossterm::new())?
-            .font_family("GoMono Nerd Font Mono")
+            .font_family("Lucida Sans Typewriter")
             .font_size(20.)
             .window_title("MD Edit")
             .rapid_blink_millis(200)
@@ -103,7 +103,7 @@ fn main() -> Result<(), Error> {
             // .poll(PollTick::new(0, 200))
             .poll(PollRendered)
             .poll(PollQuit),
-        #[cfg(feature = "crossterm")]
+        #[cfg(feature = "term")]
         RunConfig::default()?
             .poll(PollCrossterm)
             .poll(PollTasks::default())
