@@ -1,3 +1,4 @@
+#![cfg_attr(all(feature = "wgpu", windows), windows_subsystem = "windows")]
 #[cfg(feature = "term")]
 pub(crate) use rat_salsa;
 #[cfg(feature = "wgpu")]
