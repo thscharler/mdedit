@@ -12,7 +12,7 @@ categories = ["text-editors"]
 exclude = [".idea/*", ".gitignore", "mdedit.gif"]
 
 [features]
-default = ["wgpu"]
+default = ["term"]
 wgpu = ["dep:rat-salsa-wgpu"]
 term = ["dep:rat-salsa"]
 
@@ -48,4 +48,4 @@ required-features = ["wgpu"]
 [[bin]]
 name = "mdedit"
 path = "src/main.rs"
-required-features = ["crossterm"]
+required-features = ["term"]
