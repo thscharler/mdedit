@@ -1,4 +1,4 @@
-#![cfg_attr(all(feature = "wgpu", windows), windows_subsystem = "windows")]
+// #![cfg_attr(all(feature = "wgpu", windows), windows_subsystem = "windows")]
 #[cfg(feature = "term")]
 pub(crate) use rat_salsa;
 #[cfg(feature = "wgpu")]
@@ -58,6 +58,9 @@ mod fsys;
 mod global;
 mod split_tab;
 
+#[cfg(feature = "wgpu")]
+static MD_ICON: &'static [u8] = include_bytes!("md.raw");
+
 fn main() -> Result<(), Error> {
     setup_logging()?;
 
@@ -80,38 +83,36 @@ fn main() -> Result<(), Error> {
         load
     };
 
-    let theme = create_mdedit_theme(&config.theme);
-    let mut global = GlobalState::new(config, theme);
-
-    let mut state = Scenery::default();
-
-    run_tui(
-        init,
-        render,
-        event,
-        error,
-        &mut global,
-        &mut state,
-        #[cfg(feature = "wgpu")]
-        RunConfig::new(ConvertCrossterm::new())?
-            .font_family("Lucida Sans Typewriter")
-            .font_size(20.)
+    #[cfg(feature = "wgpu")]
+    let run_cfg = {
+        let mut r = RunConfig::new(ConvertCrossterm::new())?
             .window_title("MD Edit")
+            .window_icon(MD_ICON.into(), 64, 64)
             .rapid_blink_millis(200)
             .poll(PollRendered)
             .poll(PollTasks::default())
             .poll(PollTimers::default())
-            // .poll(PollTick::new(0, 200))
             .poll(PollRendered)
-            .poll(PollQuit),
-        #[cfg(feature = "term")]
-        RunConfig::default()?
-            .poll(PollCrossterm)
-            .poll(PollTasks::default())
-            .poll(PollTimers::default())
-            .poll(PollRendered)
-            .poll(PollQuit),
-    )?;
+            .poll(PollQuit);
+        if !config.font.is_empty() {
+            r = r.font_family(config.font.clone());
+        }
+        r = r.font_size(config.font_size.max(7.0));
+        r
+    };
+    #[cfg(feature = "term")]
+    let run_cfg = RunConfig::default()?
+        .poll(PollCrossterm)
+        .poll(PollTasks::default())
+        .poll(PollTimers::default())
+        .poll(PollRendered)
+        .poll(PollQuit);
+
+    let theme = create_mdedit_theme(&config.theme);
+    let mut global = GlobalState::new(config, theme);
+    let mut state = Scenery::default();
+
+    run_tui(init, render, event, error, &mut global, &mut state, run_cfg)?;
 
     Ok(())
 }
@@ -527,6 +528,10 @@ pub fn event(
 }
 
 fn store_config(state: &mut Scenery, ctx: &mut GlobalState) -> Control<MDEvent> {
+    #[cfg(feature = "wgpu")]
+    {
+        ctx.cfg.font_size = ctx.font_size();
+    }
     ctx.cfg.store_file_state(&state.editor.split_tab);
     error!("{:?}", ctx.cfg.store());
     Control::Continue

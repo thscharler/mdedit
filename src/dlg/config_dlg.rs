@@ -1,18 +1,24 @@
 use crate::global::event::MDEvent;
 use crate::global::theme::create_mdedit_theme;
 use crate::global::GlobalState;
+use crate::rat_salsa::SalsaContext;
 use anyhow::Error;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rat_dialog::WindowControl;
-use crate::rat_salsa::SalsaContext;
+#[cfg(feature = "wgpu")]
+use rat_salsa_wgpu::font_data::FontData;
 use rat_theme4::{salsa_themes, StyleName, WidgetStyle};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
+#[cfg(feature = "wgpu")]
+use rat_widget::event::SliderOutcome;
 use rat_widget::event::{try_flow, ButtonOutcome, ChoiceOutcome, HandleEvent, Popup, Regular};
-use rat_widget::focus::{impl_has_focus, FocusBuilder, HasFocus};
+use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::form::{Form, FormState};
 use rat_widget::layout::{layout_middle, FormLabel, FormWidget, LayoutForm};
 use rat_widget::number_input::{NumberInput, NumberInputState};
+#[cfg(feature = "wgpu")]
+use rat_widget::slider::{Slider, SliderState};
 use rat_widget::text::HasScreenCursor;
 use rat_widget::text_input::{TextInput, TextInputState};
 use rat_widget::util::reset_buf_area;
@@ -28,6 +34,10 @@ pub struct ConfigDialogState {
     theme: ChoiceState<String>,
     text_width: NumberInputState,
     globs: TextInputState,
+    #[cfg(feature = "wgpu")]
+    font: ChoiceState<String>,
+    #[cfg(feature = "wgpu")]
+    font_size: SliderState<f64>,
 
     ok_button: ButtonState,
     cancel_button: ButtonState,
@@ -87,11 +97,24 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
             FormLabel::Str("Files glob"),
             FormWidget::Width(35),
         );
+        #[cfg(feature = "wgpu")]
+        {
+            layout.widget(
+                state.font.id(),
+                FormLabel::Str("Font"),
+                FormWidget::Width(25),
+            );
+            layout.widget(
+                state.font_size.id(),
+                FormLabel::Str("Size"),
+                FormWidget::Width(10),
+            );
+        }
         form = form.layout(layout.build_endless(layout_size.width));
     }
     let mut form = form.into_buffer(l[0], buf, &mut state.form);
 
-    let choice_overlay = form.render2(
+    let theme_popup = form.render2(
         state.theme.id(),
         || {
             Choice::new()
@@ -115,9 +138,44 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
         || TextInput::new().styles(ctx.theme.style(WidgetStyle::TEXT)),
         &mut state.globs,
     );
-    if let Some(choice_overlay) = choice_overlay {
-        form.render(state.theme.id(), || choice_overlay, &mut state.theme);
-    }
+    #[cfg(feature = "wgpu")]
+    let font_popup = {
+        let font_popup = form.render2(
+            state.font.id(),
+            || {
+                Choice::new()
+                    .items(
+                        FontData
+                            .installed_fonts()
+                            .iter()
+                            .map(|v| (v.clone(), v.clone())),
+                    )
+                    .styles(ctx.theme.style(WidgetStyle::CHOICE))
+                    .popup_boundary(l[0])
+                    .into_widgets()
+            },
+            &mut state.font,
+        );
+        let fs = state.font_size.value();
+        form.render(
+            state.font_size.id(),
+            || {
+                Slider::<f64>::new()
+                    .range((10.0, 40.0))
+                    .step(1.0)
+                    .long_step(5.0)
+                    .upper_bound(format!(" {}", fs))
+                    .styles(ctx.theme.style(WidgetStyle::SLIDER))
+            },
+            &mut state.font_size,
+        );
+
+        font_popup
+    };
+
+    form.render_popup(state.theme.id(), || theme_popup, &mut state.theme);
+    #[cfg(feature = "wgpu")]
+    form.render_popup(state.font.id(), || font_popup, &mut state.font);
 
     // that "§$"§ curser
     ctx.set_screen_cursor(
@@ -141,7 +199,28 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
         .render(l2[1], buf, &mut state.ok_button);
 }
 
-impl_has_focus!(theme, text_width, globs, ok_button, cancel_button for ConfigDialogState);
+impl HasFocus for ConfigDialogState {
+    fn build(&self, builder: &mut FocusBuilder) {
+        builder.widget(&self.theme);
+        builder.widget(&self.text_width);
+        builder.widget(&self.globs);
+        #[cfg(feature = "wgpu")]
+        {
+            builder.widget(&self.font);
+            builder.widget(&self.font_size);
+        }
+        builder.widget(&self.ok_button);
+        builder.widget(&self.cancel_button);
+    }
+
+    fn focus(&self) -> FocusFlag {
+        unimplemented!("not defined")
+    }
+
+    fn area(&self) -> ratatui::layout::Rect {
+        unimplemented!("not defined")
+    }
+}
 
 pub fn event(
     event: &MDEvent,
@@ -172,6 +251,23 @@ pub fn event(
                 r => r.into(),
             });
             try_flow!(state.text_width.handle(event, Regular));
+            #[cfg(feature = "wgpu")]
+            {
+                try_flow!(match state.font.handle(event, Popup) {
+                    ChoiceOutcome::Value => {
+                        ctx.set_font_family(&state.font.value());
+                        WindowControl::Changed
+                    }
+                    r => r.into(),
+                });
+                try_flow!(match state.font_size.handle(event, Regular) {
+                    SliderOutcome::Value => {
+                        ctx.set_font_size(state.font_size.value());
+                        WindowControl::Changed
+                    }
+                    r => r.into(),
+                });
+            }
             try_flow!(state.globs.handle(event, Regular));
 
             try_flow!(match state
@@ -203,6 +299,11 @@ impl ConfigDialogState {
         let cfg = &ctx.cfg;
         s.theme.set_value(cfg.theme.clone());
         s.text_width.set_value(cfg.text_width)?;
+        #[cfg(feature = "wgpu")]
+        {
+            s.font_size.set_value(ctx.font_size());
+            s.font.set_value(cfg.font.clone());
+        }
         s.globs
             .set_value(cfg.globs.iter().fold(String::new(), |mut v, w| {
                 if !v.is_empty() {
@@ -233,6 +334,11 @@ impl ConfigDialogState {
         let cfg = &mut ctx.cfg;
         cfg.theme = self.theme.value();
         cfg.text_width = self.text_width.value()?;
+        #[cfg(feature = "wgpu")]
+        {
+            cfg.font = self.font.value();
+            cfg.font_size = self.font_size.value();
+        }
         cfg.globs = self
             .globs
             .value::<String>()

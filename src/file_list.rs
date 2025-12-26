@@ -86,7 +86,7 @@ pub fn render(
         .popup_scroll(Scroll::new())
         .popup_placement(Placement::Below)
         .popup_len(popup_len)
-        .behave_select(ChoiceSelect::MouseClick)
+        .behave_select(ChoiceSelect::MouseMove)
         .behave_close(ChoiceClose::SingleClick)
         .into_widgets();
     choice.render(l_file_list[2], buf, &mut state.file_system);

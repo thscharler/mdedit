@@ -1,5 +1,5 @@
 use rat_markdown::styles::MDStyle;
-use rat_theme4::palette::Colors;
+use rat_theme4::palette::{ColorIdx, Colors};
 use rat_theme4::theme::SalsaTheme;
 use rat_theme4::{create_salsa_theme, RatWidgetColor, StyleName, WidgetStyle};
 use rat_widget::choice::ChoiceStyle;
@@ -84,6 +84,11 @@ pub fn create_mdedit_theme(name: &str) -> SalsaTheme {
         vscode::patch,
     ] {
         patch(&mut theme.p);
+    }
+    if theme.p.try_aliased(Color::HIDDEN_FG).is_none() {
+        theme
+            .p
+            .add_aliased(Color::HIDDEN_FG, ColorIdx(Colors::Gray, 1));
     }
 
     match theme.theme.as_str() {
@@ -214,15 +219,15 @@ fn text_style(th: &SalsaTheme) -> HashMap<usize, Style> {
     //let base = sc.white[0];
     map.insert(
         MDStyle::Heading1.into(),
-        p.fg_style(Colors::TextLight, 3).underlined(),
+        p.fg_style(Colors::TextLight, 1).underlined().bold(),
     );
     map.insert(
         MDStyle::Heading2.into(),
-        p.fg_style(Colors::TextLight, 3).underlined(),
+        p.fg_style(Colors::TextLight, 1).underlined().bold(),
     );
     map.insert(
         MDStyle::Heading3.into(),
-        p.fg_style(Colors::TextLight, 2).underlined(),
+        p.fg_style(Colors::TextLight, 2).underlined().bold(),
     );
     map.insert(
         MDStyle::Heading4.into(),
@@ -238,7 +243,7 @@ fn text_style(th: &SalsaTheme) -> HashMap<usize, Style> {
     );
 
     map.insert(MDStyle::Paragraph.into(), Style::new());
-    map.insert(MDStyle::BlockQuote.into(), p.fg_style(Colors::Orange, 2));
+    map.insert(MDStyle::BlockQuote.into(), p.fg_style(Colors::Orange, 2).italic());
     map.insert(MDStyle::CodeBlock.into(), p.fg_style(Colors::RedPink, 2));
     map.insert(MDStyle::MathDisplay.into(), p.fg_style(Colors::RedPink, 2));
     map.insert(MDStyle::Rule.into(), p.fg_style(Colors::White, 2));
@@ -303,15 +308,15 @@ fn text_style_light(th: &SalsaTheme) -> HashMap<usize, Style> {
     //let base = sc.white[0];
     map.insert(
         MDStyle::Heading1.into(),
-        p.fg_style(Colors::TextDark, 3).underlined(),
+        p.fg_style(Colors::TextDark, 1).underlined().bold(),
     );
     map.insert(
         MDStyle::Heading2.into(),
-        p.fg_style(Colors::TextDark, 3).underlined(),
+        p.fg_style(Colors::TextDark, 1).underlined().bold(),
     );
     map.insert(
         MDStyle::Heading3.into(),
-        p.fg_style(Colors::TextDark, 2).underlined(),
+        p.fg_style(Colors::TextDark, 2).underlined().bold(),
     );
     map.insert(
         MDStyle::Heading4.into(),
@@ -327,7 +332,7 @@ fn text_style_light(th: &SalsaTheme) -> HashMap<usize, Style> {
     );
 
     map.insert(MDStyle::Paragraph.into(), Style::new());
-    map.insert(MDStyle::BlockQuote.into(), p.fg_style(Colors::Orange, 6));
+    map.insert(MDStyle::BlockQuote.into(), p.fg_style(Colors::Orange, 6).italic());
     map.insert(MDStyle::CodeBlock.into(), p.fg_style(Colors::RedPink, 6));
     map.insert(MDStyle::MathDisplay.into(), p.fg_style(Colors::RedPink, 6));
     map.insert(MDStyle::Rule.into(), p.fg_style(Colors::White, 6));
