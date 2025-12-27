@@ -558,6 +558,7 @@ pub fn error(
     ctx: &mut GlobalState,
 ) -> Result<Control<MDEvent>, Error> {
     error!("{:#?}", event);
+    error!("{:#?}", event.backtrace());
     Ok(show_message(format!("{:?}", &*event).as_str(), ctx))
 }
 

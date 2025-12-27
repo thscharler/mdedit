@@ -1,3 +1,7 @@
+# 2.0.1
+
+update dependencies
+
 # 2.0.0
 
 ratatui 0.30

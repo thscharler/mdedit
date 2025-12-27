@@ -1,5 +1,5 @@
 use anyhow::Error;
-use log::debug;
+use log::{debug, error};
 use std::fs;
 use std::path::{Path, PathBuf};
 
