@@ -1,14 +1,15 @@
 use crate::fsys::FileSysStructure;
-use crossbeam::atomic::AtomicCell;
 use crate::rat_salsa::event::{QuitEvent, RenderedEvent};
 use crate::rat_salsa::timer::TimeOut;
+use crossbeam::atomic::AtomicCell;
+use ratatui::crossterm::event::Event;
 use std::path::PathBuf;
 use try_as::traits::TryAsRef;
 
 /// Events
 pub enum MDEvent {
     // crossterm
-    Event(crossterm::event::Event),
+    Event(Event),
     // immediates are processed on the return path.
     Immediate(MDImmediate),
     // timer
@@ -82,8 +83,8 @@ impl From<QuitEvent> for MDEvent {
     }
 }
 
-impl TryAsRef<crossterm::event::Event> for MDEvent {
-    fn try_as_ref(&self) -> Option<&crossterm::event::Event> {
+impl TryAsRef<Event> for MDEvent {
+    fn try_as_ref(&self) -> Option<&Event> {
         match self {
             MDEvent::Event(e) => Some(e),
             _ => None,
@@ -91,13 +92,13 @@ impl TryAsRef<crossterm::event::Event> for MDEvent {
     }
 }
 
-impl From<crossterm::event::Event> for MDEvent {
-    fn from(value: crossterm::event::Event) -> Self {
+impl From<Event> for MDEvent {
+    fn from(value: Event) -> Self {
         Self::Event(value)
     }
 }
 
-impl<'a> TryFrom<&'a MDEvent> for &'a crossterm::event::Event {
+impl<'a> TryFrom<&'a MDEvent> for &'a Event {
     type Error = ();
 
     fn try_from(value: &'a MDEvent) -> Result<Self, Self::Error> {

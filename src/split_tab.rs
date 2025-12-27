@@ -16,7 +16,7 @@ use rat_widget::text::undo_buffer::UndoEntry;
 use rat_widget::text::TextStyle;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Style, Stylize};
+use ratatui::style::Style;
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, StatefulWidget};
 use std::cmp::max;

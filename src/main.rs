@@ -1,7 +1,10 @@
-// #![cfg_attr(all(feature = "wgpu", windows), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(feature = "wgpu", not(feature = "term"), windows),
+    windows_subsystem = "windows"
+)]
 #[cfg(feature = "term")]
 pub(crate) use rat_salsa;
-#[cfg(feature = "wgpu")]
+#[cfg(all(feature = "wgpu", not(feature = "term")))]
 pub(crate) use rat_salsa_wgpu as rat_salsa;
 
 use crate::cfg::MDConfig;
@@ -19,7 +22,7 @@ use dirs::cache_dir;
 use dlg::{file_dlg, msg_dialog};
 use log::error;
 use rat_dialog::WindowControl;
-#[cfg(feature = "wgpu")]
+#[cfg(all(feature = "wgpu", not(feature = "term")))]
 use rat_salsa::event_type::convert_crossterm::ConvertCrossterm;
 #[cfg(feature = "term")]
 use rat_salsa::poll::PollCrossterm;
@@ -36,10 +39,10 @@ use rat_widget::msgdialog::MsgDialogState;
 use rat_widget::popup::Placement;
 use rat_widget::statusline_stacked::StatusLineStacked;
 use ratatui::buffer::Buffer;
+use ratatui::crossterm::event::Event;
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::prelude::StatefulWidget;
 use ratatui::style::Style;
-use ratatui::widgets::{Block, Widget};
+use ratatui::widgets::{Block, StatefulWidget, Widget};
 use std::cmp::max;
 use std::env::args;
 use std::fs::create_dir_all;
@@ -58,7 +61,7 @@ mod fsys;
 mod global;
 mod split_tab;
 
-#[cfg(feature = "wgpu")]
+#[cfg(all(feature = "wgpu", not(feature = "term")))]
 static MD_ICON: &'static [u8] = include_bytes!("md.raw");
 
 fn main() -> Result<(), Error> {
@@ -83,7 +86,7 @@ fn main() -> Result<(), Error> {
         load
     };
 
-    #[cfg(feature = "wgpu")]
+    #[cfg(all(feature = "wgpu", not(feature = "term")))]
     let run_cfg = {
         let mut r = RunConfig::new(ConvertCrossterm::new())?
             .window_title("MD Edit")
@@ -528,7 +531,7 @@ pub fn event(
 }
 
 fn store_config(state: &mut Scenery, ctx: &mut GlobalState) -> Control<MDEvent> {
-    #[cfg(feature = "wgpu")]
+    #[cfg(all(feature = "wgpu", not(feature = "term")))]
     {
         ctx.cfg.font_size = ctx.font_size();
     }
@@ -560,7 +563,7 @@ pub fn error(
 
 fn window_cmd(
     state: &mut Scenery,
-    event: &crossterm::event::Event,
+    event: &Event,
     ctx: &mut GlobalState,
 ) -> Result<Control<MDEvent>, Error> {
     state.window_cmd = false;
@@ -612,7 +615,7 @@ fn window_cmd(
 
 fn handle_menu(
     state: &mut Scenery,
-    event: &crossterm::event::Event,
+    event: &Event,
     ctx: &mut GlobalState,
 ) -> Result<Control<MDEvent>, Error> {
     let r = match state.menu.handle(event, Popup) {

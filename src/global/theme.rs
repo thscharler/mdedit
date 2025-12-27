@@ -6,7 +6,7 @@ use rat_widget::choice::ChoiceStyle;
 use rat_widget::menu::MenuStyle;
 use rat_widget::scrolled::{ScrollStyle, ScrollSymbols};
 use rat_widget::text::TextStyle;
-use ratatui::style::{Color, Style, Stylize};
+use ratatui::style::{Color, Style};
 use ratatui::widgets::{Block, Borders};
 use std::collections::HashMap;
 
@@ -243,7 +243,10 @@ fn text_style(th: &SalsaTheme) -> HashMap<usize, Style> {
     );
 
     map.insert(MDStyle::Paragraph.into(), Style::new());
-    map.insert(MDStyle::BlockQuote.into(), p.fg_style(Colors::Orange, 2).italic());
+    map.insert(
+        MDStyle::BlockQuote.into(),
+        p.fg_style(Colors::Orange, 2).italic(),
+    );
     map.insert(MDStyle::CodeBlock.into(), p.fg_style(Colors::RedPink, 2));
     map.insert(MDStyle::MathDisplay.into(), p.fg_style(Colors::RedPink, 2));
     map.insert(MDStyle::Rule.into(), p.fg_style(Colors::White, 2));
@@ -332,7 +335,10 @@ fn text_style_light(th: &SalsaTheme) -> HashMap<usize, Style> {
     );
 
     map.insert(MDStyle::Paragraph.into(), Style::new());
-    map.insert(MDStyle::BlockQuote.into(), p.fg_style(Colors::Orange, 6).italic());
+    map.insert(
+        MDStyle::BlockQuote.into(),
+        p.fg_style(Colors::Orange, 6).italic(),
+    );
     map.insert(MDStyle::CodeBlock.into(), p.fg_style(Colors::RedPink, 6));
     map.insert(MDStyle::MathDisplay.into(), p.fg_style(Colors::RedPink, 6));
     map.insert(MDStyle::Rule.into(), p.fg_style(Colors::White, 6));
