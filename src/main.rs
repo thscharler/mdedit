@@ -29,6 +29,7 @@ use rat_salsa::poll::PollCrossterm;
 use rat_salsa::poll::{PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
+use rat_salsa_wgpu::poll::PollBlink;
 use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::event::{ct_event, try_flow, HandleEvent, MenuOutcome, Popup};
 use rat_widget::file_dialog::FileDialogState;
@@ -91,10 +92,9 @@ fn main() -> Result<(), Error> {
         let mut r = RunConfig::new(ConvertCrossterm::new())?
             .window_title("MD Edit")
             .window_icon(MD_ICON.into(), 64, 64)
-            .rapid_blink_millis(200)
-            .poll(PollRendered)
             .poll(PollTasks::default())
             .poll(PollTimers::default())
+            .poll(PollBlink::default())
             .poll(PollRendered)
             .poll(PollQuit);
         if !config.font.is_empty() {
