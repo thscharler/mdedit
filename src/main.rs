@@ -407,6 +407,20 @@ pub fn event(
                 ct_event!(keycode press F(4)) => Control::Event(MDEvent::JumpToFiles),
                 ct_event!(keycode press F(5)) => Control::Event(MDEvent::JumpToTree),
                 ct_event!(keycode press F(6)) => Control::Event(MDEvent::HideFiles),
+                #[cfg(all(feature = "wgpu", not(feature = "term")))]
+                ct_event!(keycode press F(11)) => {
+                    match ctx.window().fullscreen() {
+                        None => {
+                            ctx.window()
+                                .set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
+                        }
+                        Some(_) => {
+                            ctx.window().set_fullscreen(None);
+                        }
+                    }
+                    Control::Changed
+                }
+
                 ct_event!(key press ALT-'v') => {
                     ctx.cfg.show_ctrl = !ctx.cfg.show_ctrl;
                     ctx.queue_event(MDEvent::StoreConfig);
