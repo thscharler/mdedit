@@ -13,7 +13,8 @@ exclude = [".idea/*", ".gitignore", "mdedit.gif"]
 
 [features]
 default = ["term"]
-wgpu = ["dep:rat-salsa-wgpu"]
+wgpu = []
+#wgpu = ["dep:rat-salsa-wgpu"]
 term = ["dep:rat-salsa"]
 
 [dependencies]
@@ -34,8 +35,8 @@ try_as = "0.1"
 ratatui = { version = "0.30", features = ["crossterm"] }
 
 rat-salsa = { version = "4.0", path = "../rat-salsa/rat-salsa", features = ["dialog_widgets"], optional = true }
-#rat-salsa-wgpu = { version = "0.1", path = "../rat-salsa-wgpu", features = ["fallback_symbol_font", "fallback_emoji_font"], optional = true }
-rat-salsa-wgpu = { version = "0.1", git = "https://github.com/thscharler/rat-salsa-wgpu", branch = "remastered", features = ["fallback_symbol_font", "fallback_emoji_font"], optional = true }
+#rat-salsa-wgpu = { version = "1.0", path = "../rat-salsa-wgpu", features = ["fallback_symbol_font", "fallback_emoji_font"], optional = true }
+#rat-salsa-wgpu = { version = "1.0", git = "https://github.com/thscharler/rat-salsa-wgpu", branch = "remastered", features = ["fallback_symbol_font", "fallback_emoji_font"], optional = true }
 rat-dialog = { version = "2.0", path = "../rat-salsa/rat-dialog" }
 rat-widget = { version = "3.0", path = "../rat-salsa/rat-widget", features = ["user_directories"] }
 rat-theme4 = { version = "4", path = "../rat-salsa/rat-theme4" }

@@ -29,6 +29,7 @@ use rat_salsa::poll::PollCrossterm;
 use rat_salsa::poll::{PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
+#[cfg(all(feature = "wgpu", not(feature = "term")))]
 use rat_salsa_wgpu::poll::PollBlink;
 use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::event::{ct_event, try_flow, HandleEvent, MenuOutcome, Popup};
