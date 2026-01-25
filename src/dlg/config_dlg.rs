@@ -5,7 +5,7 @@ use crate::rat_salsa::SalsaContext;
 use anyhow::Error;
 use rat_dialog::WindowControl;
 #[cfg(all(feature = "wgpu", not(feature = "term")))]
-use rat_salsa_wgpu::font_data::FontData;
+use rat_salsa_wgpu::font::FontData;
 use rat_theme4::{salsa_themes, StyleName, WidgetStyle};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
