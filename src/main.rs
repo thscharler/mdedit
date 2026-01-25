@@ -23,7 +23,7 @@ use dlg::{file_dlg, msg_dialog};
 use log::error;
 use rat_dialog::WindowControl;
 #[cfg(all(feature = "wgpu", not(feature = "term")))]
-use rat_salsa::event_type::convert_crossterm::ConvertCrossterm;
+use rat_salsa::events::ConvertCrossterm;
 #[cfg(feature = "term")]
 use rat_salsa::poll::PollCrossterm;
 use rat_salsa::poll::{PollQuit, PollRendered, PollTasks, PollTimers};
