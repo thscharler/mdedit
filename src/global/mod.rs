@@ -1,8 +1,8 @@
 use crate::cfg::MDConfig;
 use crate::global::event::MDEvent;
-use anyhow::Error;
-use rat_dialog::DialogStack;
+use crate::rat_salsa::dialog_stack::DialogStack;
 use crate::rat_salsa::{SalsaAppContext, SalsaContext};
+use anyhow::Error;
 use rat_theme4::palette::Palette;
 use rat_theme4::theme::SalsaTheme;
 use rat_widget::hover::HoverState;

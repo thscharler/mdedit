@@ -1,9 +1,9 @@
 use crate::global::event::MDEvent;
 use crate::global::theme::create_mdedit_theme;
 use crate::global::GlobalState;
+use crate::rat_salsa::Control;
 use crate::rat_salsa::SalsaContext;
 use anyhow::Error;
-use rat_dialog::WindowControl;
 #[cfg(all(feature = "wgpu", not(feature = "term")))]
 use rat_salsa_wgpu::font::FontData;
 use rat_theme4::{salsa_themes, StyleName, WidgetStyle};
@@ -226,7 +226,7 @@ pub fn event(
     event: &MDEvent,
     state: &mut dyn Any,
     ctx: &mut GlobalState,
-) -> Result<WindowControl<MDEvent>, Error> {
+) -> Result<Control<MDEvent>, Error> {
     let state = state.downcast_mut::<ConfigDialogState>().expect("state");
 
     if let MDEvent::Event(event) = event {
@@ -246,7 +246,7 @@ pub fn event(
                         .expect("theme");
 
                     ctx.theme = create_mdedit_theme(theme);
-                    WindowControl::Changed
+                    Control::Changed
                 }
                 r => r.into(),
             });
@@ -256,14 +256,14 @@ pub fn event(
                 try_flow!(match state.font.handle(event, Popup) {
                     ChoiceOutcome::Value => {
                         ctx.set_font_family(&state.font.value());
-                        WindowControl::Changed
+                        Control::Changed
                     }
                     r => r.into(),
                 });
                 try_flow!(match state.font_size.handle(event, Regular) {
                     SliderOutcome::Value => {
                         ctx.set_font_size(state.font_size.value());
-                        WindowControl::Changed
+                        Control::Changed
                     }
                     r => r.into(),
                 });
@@ -285,9 +285,9 @@ pub fn event(
                 r => r.into(),
             });
 
-            Ok(WindowControl::Unchanged)
+            Ok(Control::Unchanged)
         }
-        _ => Ok(WindowControl::Continue),
+        _ => Ok(Control::Continue),
     }
 }
 
@@ -319,7 +319,7 @@ impl ConfigDialogState {
         Ok(s)
     }
 
-    fn cancel(&mut self, ctx: &mut GlobalState) -> Result<WindowControl<MDEvent>, Error> {
+    fn cancel(&mut self, ctx: &mut GlobalState) -> Result<Control<MDEvent>, Error> {
         let theme = salsa_themes()
             .iter()
             .find(|v| **v == ctx.cfg.theme)
@@ -327,10 +327,10 @@ impl ConfigDialogState {
             .expect("theme");
         ctx.theme = create_mdedit_theme(theme);
 
-        Ok(WindowControl::Close(MDEvent::NoOp))
+        Ok(Control::Close(MDEvent::NoOp))
     }
 
-    fn save(&mut self, ctx: &mut GlobalState) -> Result<WindowControl<MDEvent>, Error> {
+    fn save(&mut self, ctx: &mut GlobalState) -> Result<Control<MDEvent>, Error> {
         let cfg = &mut ctx.cfg;
         cfg.theme = self.theme.value();
         cfg.text_width = self.text_width.value()?;
@@ -353,6 +353,6 @@ impl ConfigDialogState {
             .collect();
 
         ctx.queue_event(MDEvent::StoreConfig);
-        Ok(WindowControl::Close(MDEvent::NoOp))
+        Ok(Control::Close(MDEvent::NoOp))
     }
 }

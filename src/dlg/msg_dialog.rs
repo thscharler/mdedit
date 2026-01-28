@@ -1,7 +1,7 @@
 use crate::global::event::MDEvent;
 use crate::global::GlobalState;
+use crate::rat_salsa::Control;
 use anyhow::Error;
-use rat_dialog::WindowControl;
 use rat_theme4::palette::Colors;
 use rat_theme4::WidgetStyle;
 use rat_widget::event::{Dialog, HandleEvent, Outcome};
@@ -66,7 +66,7 @@ pub fn event(
     event: &MDEvent,
     state: &mut dyn Any,
     _ctx: &mut GlobalState,
-) -> Result<WindowControl<MDEvent>, Error> {
+) -> Result<Control<MDEvent>, Error> {
     let r = if let MDEvent::Event(event) = event {
         let state = state
             .downcast_mut::<MsgDialogState>()
@@ -75,15 +75,15 @@ pub fn event(
         match state.handle(event, Dialog) {
             Outcome::Changed => {
                 if !state.active() {
-                    WindowControl::Close(MDEvent::NoOp)
+                    Control::Close(MDEvent::NoOp)
                 } else {
-                    WindowControl::Changed
+                    Control::Changed
                 }
             }
             r => r.into(),
         }
     } else {
-        WindowControl::Continue
+        Control::Continue
     };
     Ok(r)
 }
