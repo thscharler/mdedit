@@ -4,8 +4,7 @@ use crate::global::GlobalState;
 use crate::rat_salsa::Control;
 use crate::rat_salsa::SalsaContext;
 use anyhow::Error;
-#[cfg(all(feature = "wgpu", not(feature = "term")))]
-use rat_salsa_wgpu::font::FontData;
+use rat_salsa_wgpu::font::installed_mono_fonts;
 use rat_theme4::{salsa_themes, StyleName, WidgetStyle};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
@@ -145,8 +144,7 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
             || {
                 Choice::new()
                     .items(
-                        FontData
-                            .installed_fonts()
+                        installed_mono_fonts()
                             .iter()
                             .map(|v| (v.clone(), v.clone())),
                     )
@@ -255,7 +253,7 @@ pub fn event(
             {
                 try_flow!(match state.font.handle(event, Popup) {
                     ChoiceOutcome::Value => {
-                        ctx.set_font_family(&state.font.value());
+                        _ = ctx.set_font_family(&state.font.value());
                         Control::Changed
                     }
                     r => r.into(),
