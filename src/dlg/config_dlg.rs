@@ -4,6 +4,7 @@ use crate::global::GlobalState;
 use crate::rat_salsa::Control;
 use crate::rat_salsa::SalsaContext;
 use anyhow::Error;
+#[cfg(all(feature = "wgpu", not(feature = "term")))]
 use rat_salsa_wgpu::font::installed_mono_fonts;
 use rat_theme4::{salsa_themes, StyleName, WidgetStyle};
 use rat_widget::button::{Button, ButtonState};
@@ -36,7 +37,7 @@ pub struct ConfigDialogState {
     #[cfg(all(feature = "wgpu", not(feature = "term")))]
     font: ChoiceState<String>,
     #[cfg(all(feature = "wgpu", not(feature = "term")))]
-    font_size: SliderState<f64>,
+    font_size: SliderState<u32>,
 
     ok_button: ButtonState,
     cancel_button: ButtonState,
@@ -158,10 +159,10 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
         form.render(
             state.font_size.id(),
             || {
-                Slider::<f64>::new()
-                    .range((10.0, 40.0))
-                    .step(1.0)
-                    .long_step(5.0)
+                Slider::<u32>::new()
+                    .range((10, 40))
+                    .step(1)
+                    .long_step(5)
                     .upper_bound(format!(" {}", fs))
                     .styles(ctx.theme.style(WidgetStyle::SLIDER))
             },

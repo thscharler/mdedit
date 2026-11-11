@@ -100,7 +100,7 @@ fn main() -> Result<(), Error> {
         if !config.font.is_empty() {
             r = r.font_family(config.font.clone());
         }
-        r = r.font_size(config.font_size.max(7.0));
+        r = r.font_size(config.font_size.max(7));
         r
     };
     #[cfg(feature = "term")]

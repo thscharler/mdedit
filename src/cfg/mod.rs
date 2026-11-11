@@ -18,7 +18,7 @@ pub struct MDConfig {
     pub theme: String,
     pub text_width: u16,
     pub font: String,
-    pub font_size: f64,
+    pub font_size: u32,
 
     // startup
     pub load_file: Vec<PathBuf>,
@@ -56,7 +56,7 @@ impl Default for MDConfig {
             file_split_at: DEFAULT_FILE_SPLIT_AT,
             text_width: DEFAULT_TEXT_WIDTH,
             font: "".to_string(),
-            font_size: 20.0,
+            font_size: 20,
             load_file: Default::default(),
             globs: vec!["*.md".to_string()],
             log_level: "debug".to_string(),
@@ -90,8 +90,8 @@ impl MDConfig {
                     .unwrap_or("").trim().to_string();
                 let font_size = sec.get("font-size")
                     .unwrap_or("20")
-                    .parse::<f64>()
-                    .unwrap_or(20.0);
+                    .parse()
+                    .unwrap_or(20);
 
                 let mut globs = sec
                     .get("file_pattern")
