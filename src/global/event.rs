@@ -3,12 +3,10 @@ use crate::rat_salsa::event::{QuitEvent, RenderedEvent};
 use crate::rat_salsa::timer::TimeOut;
 use crossbeam::atomic::AtomicCell;
 #[cfg(feature = "wgpu")]
-use rat_salsa_wgpu::events::{winit_to_crossterm_event, WindowEventState};
+use rat_salsa_wgpu::event::{winit_to_crossterm_event, WindowEvent, WindowEventState};
 use ratatui::crossterm::event::Event;
 use std::path::PathBuf;
 use try_as::traits::TryAsRef;
-#[cfg(feature = "wgpu")]
-use winit::event::WindowEvent;
 
 /// Events
 pub enum MDEvent {
