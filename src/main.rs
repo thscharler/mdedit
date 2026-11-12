@@ -4,7 +4,7 @@
 )]
 #[cfg(feature = "term")]
 pub(crate) use rat_salsa;
-#[cfg(all(feature = "wgpu", not(feature = "term")))]
+#[cfg(feature = "wgpu")]
 pub(crate) use rat_salsa_wgpu as rat_salsa;
 
 use crate::cfg::MDConfig;
@@ -21,14 +21,12 @@ use crossbeam::channel::SendError;
 use dirs::cache_dir;
 use dlg::{file_dlg, msg_dialog};
 use log::error;
-#[cfg(all(feature = "wgpu", not(feature = "term")))]
-use rat_salsa::events::ConvertCrossterm;
 #[cfg(feature = "term")]
 use rat_salsa::poll::PollCrossterm;
 use rat_salsa::poll::{PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
-#[cfg(all(feature = "wgpu", not(feature = "term")))]
+#[cfg(feature = "wgpu")]
 use rat_salsa_wgpu::poll::PollBlink;
 use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::event::{ct_event, try_flow, HandleEvent, MenuOutcome, Popup};
@@ -62,7 +60,7 @@ mod fsys;
 mod global;
 mod split_tab;
 
-#[cfg(all(feature = "wgpu", not(feature = "term")))]
+#[cfg(feature = "wgpu")]
 static MD_ICON: &'static [u8] = include_bytes!("md.raw");
 
 fn main() -> Result<(), Error> {
@@ -87,9 +85,9 @@ fn main() -> Result<(), Error> {
         load
     };
 
-    #[cfg(all(feature = "wgpu", not(feature = "term")))]
+    #[cfg(feature = "wgpu")]
     let run_cfg = {
-        let mut r = RunConfig::new(ConvertCrossterm::new())?
+        let mut r = RunConfig::new()?
             .window_title("MD Edit")
             .window_icon(MD_ICON.into(), 64, 64)
             .poll(PollTasks::default())
@@ -404,7 +402,7 @@ pub fn event(
                 ct_event!(keycode press F(4)) => Control::Event(MDEvent::JumpToFiles),
                 ct_event!(keycode press F(5)) => Control::Event(MDEvent::JumpToTree),
                 ct_event!(keycode press F(6)) => Control::Event(MDEvent::HideFiles),
-                #[cfg(all(feature = "wgpu", not(feature = "term")))]
+                #[cfg(feature = "wgpu")]
                 ct_event!(keycode press F(11)) => {
                     match ctx.window().fullscreen() {
                         None => {
@@ -543,7 +541,7 @@ pub fn event(
 }
 
 fn store_config(state: &mut Scenery, ctx: &mut GlobalState) -> Control<MDEvent> {
-    #[cfg(all(feature = "wgpu", not(feature = "term")))]
+    #[cfg(feature = "wgpu")]
     {
         ctx.cfg.font_size = ctx.font_size();
     }

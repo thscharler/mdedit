@@ -2,9 +2,13 @@ use crate::fsys::FileSysStructure;
 use crate::rat_salsa::event::{QuitEvent, RenderedEvent};
 use crate::rat_salsa::timer::TimeOut;
 use crossbeam::atomic::AtomicCell;
+#[cfg(feature = "wgpu")]
+use rat_salsa_wgpu::events::{winit_to_crossterm_event, WindowEventState};
 use ratatui::crossterm::event::Event;
 use std::path::PathBuf;
 use try_as::traits::TryAsRef;
+#[cfg(feature = "wgpu")]
+use winit::event::WindowEvent;
 
 /// Events
 pub enum MDEvent {
@@ -80,6 +84,15 @@ impl From<RenderedEvent> for MDEvent {
 impl From<QuitEvent> for MDEvent {
     fn from(_: QuitEvent) -> Self {
         Self::Quit
+    }
+}
+
+#[cfg(feature = "wgpu")]
+impl TryFrom<(&WindowEvent, &WindowEventState)> for MDEvent {
+    type Error = ();
+
+    fn try_from(value: (&WindowEvent, &WindowEventState)) -> Result<Self, Self::Error> {
+        winit_to_crossterm_event(value).map(|v| Self::Event(v))
     }
 }
 

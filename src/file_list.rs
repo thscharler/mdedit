@@ -107,7 +107,7 @@ pub fn render(
 
     // render hover for overlong file names
     if state.file_list.is_focused() {
-        if let Some(selected) = state.file_list.selected() {
+        if let Some(selected) = state.file_list.selected_checked() {
             let idx = selected - state.file_list.offset();
 
             let focus_style =
