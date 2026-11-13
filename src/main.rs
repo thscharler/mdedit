@@ -1,11 +1,5 @@
-#![cfg_attr(
-    all(feature = "wgpu", not(feature = "term"), windows),
-    windows_subsystem = "windows"
-)]
-#[cfg(feature = "term")]
-pub(crate) use rat_salsa;
-#[cfg(feature = "wgpu")]
-pub(crate) use rat_salsa_wgpu as rat_salsa;
+#![cfg_attr(all(feature = "wgpu", windows), windows_subsystem = "windows")]
+pub(crate) use rat_salsa_switch as rat_salsa;
 
 use crate::cfg::MDConfig;
 use crate::config_dlg::ConfigDialogState;
@@ -27,7 +21,7 @@ use rat_salsa::poll::{PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
 #[cfg(feature = "wgpu")]
-use rat_salsa_wgpu::poll::PollBlink;
+use rat_salsa::poll::PollBlink;
 use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::event::{ct_event, try_flow, HandleEvent, MenuOutcome, Popup};
 use rat_widget::file_dialog::FileDialogState;

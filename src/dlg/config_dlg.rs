@@ -1,22 +1,21 @@
 use crate::global::event::MDEvent;
 use crate::global::theme::create_mdedit_theme;
 use crate::global::GlobalState;
-use crate::rat_salsa::Control;
-use crate::rat_salsa::SalsaContext;
 use anyhow::Error;
-#[cfg(all(feature = "wgpu", not(feature = "term")))]
-use rat_salsa_wgpu::font::installed_mono_fonts;
+#[cfg(feature = "wgpu")]
+use rat_salsa_switch::font::installed_mono_fonts;
+use rat_salsa_switch::{Control, SalsaContext};
 use rat_theme4::{salsa_themes, StyleName, WidgetStyle};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
-#[cfg(all(feature = "wgpu", not(feature = "term")))]
+#[cfg(feature = "wgpu")]
 use rat_widget::event::SliderOutcome;
 use rat_widget::event::{try_flow, ButtonOutcome, ChoiceOutcome, HandleEvent, Popup, Regular};
 use rat_widget::focus::{FocusBuilder, FocusFlag, HasFocus};
 use rat_widget::form::{Form, FormState};
 use rat_widget::layout::{layout_middle, FormLabel, FormWidget, LayoutForm};
 use rat_widget::number_input::{NumberInput, NumberInputState};
-#[cfg(all(feature = "wgpu", not(feature = "term")))]
+#[cfg(feature = "wgpu")]
 use rat_widget::slider::{Slider, SliderState};
 use rat_widget::text::HasScreenCursor;
 use rat_widget::text_input::{TextInput, TextInputState};
@@ -34,9 +33,9 @@ pub struct ConfigDialogState {
     theme: ChoiceState<String>,
     text_width: NumberInputState,
     globs: TextInputState,
-    #[cfg(all(feature = "wgpu", not(feature = "term")))]
+    #[cfg(feature = "wgpu")]
     font: ChoiceState<String>,
-    #[cfg(all(feature = "wgpu", not(feature = "term")))]
+    #[cfg(feature = "wgpu")]
     font_size: SliderState<u32>,
 
     ok_button: ButtonState,
@@ -97,7 +96,7 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
             FormLabel::Str("Files glob"),
             FormWidget::Width(35),
         );
-        #[cfg(all(feature = "wgpu", not(feature = "term")))]
+        #[cfg(feature = "wgpu")]
         {
             layout.widget(
                 state.font.id(),
@@ -138,7 +137,7 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
         || TextInput::new().styles(ctx.theme.style(WidgetStyle::TEXT)),
         &mut state.globs,
     );
-    #[cfg(all(feature = "wgpu", not(feature = "term")))]
+    #[cfg(feature = "wgpu")]
     let font_popup = {
         let font_popup = form.render2(
             state.font.id(),
@@ -173,7 +172,7 @@ pub fn render(area: Rect, buf: &mut Buffer, state: &mut dyn Any, ctx: &mut Globa
     };
 
     form.render_popup(state.theme.id(), || theme_popup, &mut state.theme);
-    #[cfg(all(feature = "wgpu", not(feature = "term")))]
+    #[cfg(feature = "wgpu")]
     form.render_popup(state.font.id(), || font_popup, &mut state.font);
 
     // that "§$"§ curser
@@ -203,7 +202,7 @@ impl HasFocus for ConfigDialogState {
         builder.widget(&self.theme);
         builder.widget(&self.text_width);
         builder.widget(&self.globs);
-        #[cfg(all(feature = "wgpu", not(feature = "term")))]
+        #[cfg(feature = "wgpu")]
         {
             builder.widget(&self.font);
             builder.widget(&self.font_size);
@@ -250,7 +249,7 @@ pub fn event(
                 r => r.into(),
             });
             try_flow!(state.text_width.handle(event, Regular));
-            #[cfg(all(feature = "wgpu", not(feature = "term")))]
+            #[cfg(feature = "wgpu")]
             {
                 try_flow!(match state.font.handle(event, Popup) {
                     ChoiceOutcome::Value => {
@@ -298,7 +297,7 @@ impl ConfigDialogState {
         let cfg = &ctx.cfg;
         s.theme.set_value(cfg.theme.clone());
         s.text_width.set_value(cfg.text_width)?;
-        #[cfg(all(feature = "wgpu", not(feature = "term")))]
+        #[cfg(feature = "wgpu")]
         {
             s.font_size.set_value(ctx.font_size());
             s.font.set_value(cfg.font.clone());
@@ -333,7 +332,7 @@ impl ConfigDialogState {
         let cfg = &mut ctx.cfg;
         cfg.theme = self.theme.value();
         cfg.text_width = self.text_width.value()?;
-        #[cfg(all(feature = "wgpu", not(feature = "term")))]
+        #[cfg(feature = "wgpu")]
         {
             cfg.font = self.font.value();
             cfg.font_size = self.font_size.value();
