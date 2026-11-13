@@ -13,8 +13,8 @@ exclude = [".idea/*", ".gitignore", "mdedit.gif"]
 
 [features]
 default = []
-wgpu = ["rat-salsa-switch/wgpu", "winit"]
-term = ["rat-salsa-switch/term"]
+wgpu = ["rat-salsa-wgpu"]
+term = ["rat-salsa"]
 
 [dependencies]
 cli-clipboard = "0.4"
@@ -34,7 +34,8 @@ winit = { version = "0.30", optional = true }
 
 ratatui = { version = "0.30", features = ["crossterm"] }
 
-rat-salsa-switch = { version = "0.1", path = "../rat-salsa-switch", features = [] }
+rat-salsa = { version = "4.0", features = [], optional = true }
+rat-salsa-wgpu = { version = "1.0", features = [], optional = true }
 rat-widget = { version = "3.3", features = ["user_directories"] }
 rat-theme4 = { version = "4.5" }
 rat-markdown = { version = "0.7" }

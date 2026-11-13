@@ -1,5 +1,9 @@
 #![cfg_attr(all(feature = "wgpu", windows), windows_subsystem = "windows")]
-pub(crate) use rat_salsa_switch as rat_salsa;
+
+#[cfg(feature = "wgpu")]
+pub(crate) use rat_salsa_wgpu as rat_salsa;
+#[cfg(feature = "term")]
+pub(crate) use rat_salsa as rat_salsa;
 
 use crate::cfg::MDConfig;
 use crate::config_dlg::ConfigDialogState;

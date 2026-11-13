@@ -1,10 +1,10 @@
 use crate::global::event::MDEvent;
 use crate::global::theme::create_mdedit_theme;
 use crate::global::GlobalState;
-use anyhow::Error;
 #[cfg(feature = "wgpu")]
-use rat_salsa_switch::font::installed_mono_fonts;
-use rat_salsa_switch::{Control, SalsaContext};
+use crate::rat_salsa::backend::font::installed_mono_fonts;
+use crate::rat_salsa::{Control, SalsaContext};
+use anyhow::Error;
 use rat_theme4::{salsa_themes, StyleName, WidgetStyle};
 use rat_widget::button::{Button, ButtonState};
 use rat_widget::choice::{Choice, ChoiceState};
