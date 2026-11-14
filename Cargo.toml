@@ -13,7 +13,7 @@ exclude = [".idea/*", ".gitignore", "mdedit.gif"]
 
 [features]
 default = []
-wgpu = ["rat-salsa-wgpu"]
+wgpu = ["rat-salsa-wgpu", "winit"]
 term = ["rat-salsa"]
 
 [dependencies]
