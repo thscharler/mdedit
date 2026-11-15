@@ -46,7 +46,7 @@ pub enum MDEvent {
     SelectOrOpenSplit(PathBuf),
     SaveAs(PathBuf),
     FileSysChanged(Box<AtomicCell<FileSysStructure>>),
-    FileSysReloaded(Box<AtomicCell<FileSysStructure>>),
+    FileSysReloaded,
     Save,
     Split,
     JumpToFileSplit,

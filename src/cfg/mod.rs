@@ -3,6 +3,7 @@ use anyhow::{anyhow, Error};
 use dirs::config_dir;
 use ini::Ini;
 use log::warn;
+use rat_salsa_wgpu::WindowBounds;
 use rat_widget::text::{upos_type, Locale};
 use std::fs::create_dir_all;
 use std::path::PathBuf;
@@ -17,8 +18,12 @@ pub struct MDConfig {
     // ui cfg
     pub theme: String,
     pub text_width: u16,
+    #[cfg(feature = "wgpu")]
     pub font: String,
+    #[cfg(feature = "wgpu")]
     pub font_size: u32,
+    #[cfg(feature = "wgpu")]
+    pub window: Option<WindowBounds>,
 
     // startup
     pub load_file: Vec<PathBuf>,
@@ -55,8 +60,12 @@ impl Default for MDConfig {
             wrap_text: false,
             file_split_at: DEFAULT_FILE_SPLIT_AT,
             text_width: DEFAULT_TEXT_WIDTH,
+            #[cfg(feature = "wgpu")]
             font: "".to_string(),
+            #[cfg(feature = "wgpu")]
             font_size: 20,
+            #[cfg(feature = "wgpu")]
+            window: None,
             load_file: Default::default(),
             globs: vec!["*.md".to_string()],
             log_level: "debug".to_string(),
@@ -86,12 +95,18 @@ impl MDConfig {
                     .parse()
                     .unwrap_or(DEFAULT_TEXT_WIDTH);
 
-                let font = sec.get("font")
-                    .unwrap_or("").trim().to_string();
-                let font_size = sec.get("font-size")
-                    .unwrap_or("20")
-                    .parse()
-                    .unwrap_or(20);
+                #[cfg(feature = "wgpu")]
+                let font = sec.get("font").unwrap_or("").trim().to_string();
+                #[cfg(feature = "wgpu")]
+                let font_size = sec.get("font-size").unwrap_or("20").parse().unwrap_or(20);
+                #[cfg(feature = "wgpu")]
+                let window = sec
+                    .get("window")
+                    .unwrap_or("")
+                    .parse::<WindowBounds>()
+                    .map(|v| Some(v))
+                    .ok()
+                    .flatten();
 
                 let mut globs = sec
                     .get("file_pattern")
@@ -204,11 +219,17 @@ impl MDConfig {
                 }
 
                 Some(MDConfig {
+                    loc: Default::default(),
                     theme: theme.into(),
                     file_split_at,
                     text_width,
+                    #[cfg(feature = "wgpu")]
                     font,
+                    #[cfg(feature = "wgpu")]
                     font_size,
+                    #[cfg(feature = "wgpu")]
+                    window,
+                    load_file: Default::default(),
                     globs,
                     show_ctrl,
                     show_break,
@@ -220,7 +241,6 @@ impl MDConfig {
                     tab_offset,
                     tab_selected,
                     edit_split_at,
-                    ..Default::default()
                 })
             } else {
                 None
@@ -348,8 +368,14 @@ impl MDConfig {
             let mut sec = ini.with_general_section();
             sec.set("theme", self.theme.clone());
             sec.set("text_width", self.text_width.to_string());
+            #[cfg(feature = "wgpu")]
             sec.set("font", self.font.clone());
+            #[cfg(feature = "wgpu")]
             sec.set("font-size", self.font_size.to_string());
+            #[cfg(feature = "wgpu")]
+            if let Some(window) = self.window {
+                sec.set("window", window.to_string());
+            }
             sec.set(
                 "file_pattern",
                 self.globs

@@ -1,9 +1,9 @@
 #![cfg_attr(all(feature = "wgpu", windows), windows_subsystem = "windows")]
 
+#[cfg(feature = "term")]
+pub(crate) use rat_salsa;
 #[cfg(feature = "wgpu")]
 pub(crate) use rat_salsa_wgpu as rat_salsa;
-#[cfg(feature = "term")]
-pub(crate) use rat_salsa as rat_salsa;
 
 use crate::cfg::MDConfig;
 use crate::config_dlg::ConfigDialogState;
@@ -18,14 +18,14 @@ use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::SendError;
 use dirs::cache_dir;
 use dlg::{file_dlg, msg_dialog};
-use log::error;
+use log::{debug, error};
+#[cfg(feature = "wgpu")]
+use rat_salsa::poll::PollBlink;
 #[cfg(feature = "term")]
 use rat_salsa::poll::PollCrossterm;
 use rat_salsa::poll::{PollQuit, PollRendered, PollTasks, PollTimers};
 use rat_salsa::timer::{TimerDef, TimerHandle};
 use rat_salsa::{run_tui, Control, RunConfig, SalsaContext};
-#[cfg(feature = "wgpu")]
-use rat_salsa::poll::PollBlink;
 use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::event::{ct_event, try_flow, HandleEvent, MenuOutcome, Popup};
 use rat_widget::file_dialog::FileDialogState;
@@ -97,6 +97,9 @@ fn main() -> Result<(), Error> {
             r = r.font_family(config.font.clone());
         }
         r = r.font_size(config.font_size.max(7));
+        if let Some(window) = config.window {
+            r = r.window_bounds(window);
+        }
         r
     };
     #[cfg(feature = "term")]
@@ -444,17 +447,9 @@ pub fn event(
                 }
                 ct_event!(focus_gained) => {
                     let cfg = ctx.cfg.globs.clone();
-                    let root = state.editor.file_list.root().to_path_buf();
                     let current = state.editor.file_list.current_dir().to_path_buf();
-                    ctx.spawn(move || {
-                        let mut sys = FileSysStructure::new();
-                        sys.load_filesys(&root)?;
-                        sys.load_current(&current, &cfg)?;
-                        Ok(Control::Event(MDEvent::FileSysReloaded(
-                            Box::new(AtomicCell::new(sys)), //
-                        )))
-                    })?;
-                    Control::Continue
+                    state.editor.file_list.load_current(&current, &cfg)?;
+                    Control::Event(MDEvent::FileSysReloaded)
                 }
                 ct_event!(focus_lost) => Control::Event(MDEvent::Save),
                 _ => Control::Continue,
@@ -542,6 +537,7 @@ fn store_config(state: &mut Scenery, ctx: &mut GlobalState) -> Control<MDEvent> 
     #[cfg(feature = "wgpu")]
     {
         ctx.cfg.font_size = ctx.font_size();
+        ctx.cfg.window = Some(ctx.window_bounds());
     }
     ctx.cfg.store_file_state(&state.editor.split_tab);
     error!("{:?}", ctx.cfg.store());

@@ -2,8 +2,8 @@ use crate::fsys::FileSysStructure;
 use crate::global::event::MDEvent;
 use crate::global::theme::MDWidgets;
 use crate::global::GlobalState;
-use anyhow::Error;
 use crate::rat_salsa::{Control, SalsaContext};
+use anyhow::Error;
 use rat_theme4::palette::Colors;
 use rat_theme4::{StyleName, WidgetStyle};
 use rat_widget::choice::{Choice, ChoiceClose, ChoiceSelect, ChoiceState};
@@ -109,7 +109,6 @@ pub fn render(
     if state.file_list.is_focused() {
         if let Some(selected) = state.file_list.selected_checked() {
             let idx = selected - state.file_list.offset();
-
             let focus_style =
                 theme
                     .style::<ListStyle>(WidgetStyle::LIST)
@@ -126,11 +125,11 @@ pub fn render(
                 }
             });
             if let Some(line) = line {
-                let mut area = state.file_list.row_areas[idx];
-                area.width = line.width() as u16 + 1;
-
-                line.style(focus_style)
-                    .render(area, ctx.hover.buffer_mut(area));
+                if let Some(mut area) = state.file_list.row_area(idx) {
+                    area.width = line.width() as u16 + 1;
+                    line.style(focus_style)
+                        .render(area, ctx.hover.buffer_mut(area));
+                }
             }
         }
     }
@@ -233,6 +232,11 @@ pub fn event(
 }
 
 impl FileListState {
+    /// Current filesystem
+    pub fn file_system(&self) -> &FileSysStructure {
+        &self.sys
+    }
+
     /// Current root
     pub fn root(&self) -> &Path {
         self.sys.root()

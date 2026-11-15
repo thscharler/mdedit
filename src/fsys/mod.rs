@@ -118,7 +118,6 @@ impl FileSysStructure {
     /// Load the tree + current files.
     /// Limits the file list with globs.
     pub fn load(&mut self, path: &Path, globs: &[String]) -> Result<(), Error> {
-        debug!("** load {:?} {:?}", path, globs);
         self.load_current(path, globs)?;
         self.load_filesys(path)?;
         Ok(())
@@ -136,8 +135,6 @@ impl FileSysStructure {
         if self.root == new_root {
             return Ok(());
         }
-
-        debug!("** change root {:?}", new_root);
 
         self.name = String::default();
         self.root = new_root;
@@ -192,7 +189,6 @@ impl FileSysStructure {
                     if f.is_relative() && !f.starts_with(PathBuf::from(".")) {
                         f = PathBuf::from(".").join(f);
                     }
-                    debug!("    found {:?} -> {:?}", pat, f);
                     self.files.push(f);
                 }
             }

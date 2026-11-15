@@ -129,12 +129,12 @@ pub fn event(
                 Control::Continue
             }
             MDEvent::FileSysChanged(fs) => {
-                state.file_list.replace_fs(fs.take());
+                let fs = fs.take();
+                state.file_list.replace_fs(fs);
                 file_list::init(&mut state.file_list, ctx)?;
                 state.jump_to_file(ctx)?
             }
-            MDEvent::FileSysReloaded(fs) => {
-                state.file_list.replace_fs(fs.take());
+            MDEvent::FileSysReloaded => {
                 file_list::init(&mut state.file_list, ctx)?;
                 if !state.split_files.is_hidden(0) {
                     Control::Changed

@@ -71,37 +71,38 @@ pub fn render(
         );
     }
 
-    // let max_idx_split = state.split.widget_areas.len().saturating_sub(1);
-    for (idx_split, edit_area) in state.split.widget_areas.iter().enumerate() {
-        Tabbed::new()
-            .tab_type(TabType::Attached)
-            .closeable(true)
-            .block(Block::bordered().borders(Borders::TOP))
-            .styles(ctx.theme.style(WidgetStyle::TABBED))
-            .tabs(state.split_tab_file[idx_split].iter().map(|v| {
-                let title = format!(
-                    "{}{}",
-                    v.path.file_name().unwrap_or_default().to_string_lossy(),
-                    if v.changed { " \u{1F5AB}" } else { "" }
-                );
-                Line::from(title)
-            }))
-            .render(*edit_area, buf, &mut state.split_tab[idx_split]);
+    if !state.split_tab_file.is_empty() {
+        for (idx_split, edit_area) in state.split.widget_areas.iter().enumerate() {
+            Tabbed::new()
+                .tab_type(TabType::Attached)
+                .closeable(true)
+                .block(Block::bordered().borders(Borders::TOP))
+                .styles(ctx.theme.style(WidgetStyle::TABBED))
+                .tabs(state.split_tab_file[idx_split].iter().map(|v| {
+                    let title = format!(
+                        "{}{}",
+                        v.path.file_name().unwrap_or_default().to_string_lossy(),
+                        if v.changed { " \u{1F5AB}" } else { "" }
+                    );
+                    Line::from(title)
+                }))
+                .render(*edit_area, buf, &mut state.split_tab[idx_split]);
 
-        if let Some(idx_tab) = state.split_tab[idx_split].selected() {
-            editor_file::render(
-                0, // if max_idx_split == idx_split { 0 } else { 1 },
-                state.split_tab[idx_split].widget_area,
-                buf,
-                &mut state.split_tab_file[idx_split][idx_tab],
-                ctx,
-            )?;
-        } else {
-            // should not occur?
-            buf.set_style(
-                state.split_tab[idx_split].widget_area,
-                Style::new().on_red(),
-            );
+            if let Some(idx_tab) = state.split_tab[idx_split].selected() {
+                editor_file::render(
+                    0, // if max_idx_split == idx_split { 0 } else { 1 },
+                    state.split_tab[idx_split].widget_area,
+                    buf,
+                    &mut state.split_tab_file[idx_split][idx_tab],
+                    ctx,
+                )?;
+            } else {
+                // should not occur?
+                buf.set_style(
+                    state.split_tab[idx_split].widget_area,
+                    Style::new().on_red(),
+                );
+            }
         }
     }
 
