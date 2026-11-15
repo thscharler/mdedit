@@ -18,9 +18,7 @@ use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::SendError;
 use dirs::cache_dir;
 use dlg::{file_dlg, msg_dialog};
-use log::{debug, error};
-#[cfg(feature = "wgpu")]
-use rat_salsa::poll::PollBlink;
+use log::error;
 #[cfg(feature = "term")]
 use rat_salsa::poll::PollCrossterm;
 use rat_salsa::poll::{PollQuit, PollRendered, PollTasks, PollTimers};
@@ -90,7 +88,6 @@ fn main() -> Result<(), Error> {
             .window_icon(MD_ICON.into(), 64, 64)
             .poll(PollTasks::default())
             .poll(PollTimers::default())
-            .poll(PollBlink::default())
             .poll(PollRendered)
             .poll(PollQuit);
         if !config.font.is_empty() {

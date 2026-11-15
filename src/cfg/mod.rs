@@ -3,6 +3,7 @@ use anyhow::{anyhow, Error};
 use dirs::config_dir;
 use ini::Ini;
 use log::warn;
+#[cfg(feature = "wgpu")]
 use rat_salsa_wgpu::WindowBounds;
 use rat_widget::text::{upos_type, Locale};
 use std::fs::create_dir_all;
