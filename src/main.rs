@@ -13,7 +13,7 @@ use crate::fsys::FileSysStructure;
 use crate::global::event::MDEvent;
 use crate::global::theme::{create_mdedit_theme, MDStyles, MDWidgets};
 use crate::global::GlobalState;
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use crossbeam::atomic::AtomicCell;
 use crossbeam::channel::SendError;
 use dirs::cache_dir;
@@ -45,6 +45,7 @@ use std::path::PathBuf;
 use std::str::from_utf8;
 use std::time::Duration;
 use std::{env, fs, mem};
+use rat_salsa_wgpu::backend::font::{fallback_emoji_font, fallback_family, fallback_font, fallback_symbol_font, installed_mono_fonts, load_font_by_family};
 
 mod cfg;
 mod dlg;
@@ -81,11 +82,19 @@ fn main() -> Result<(), Error> {
         load
     };
 
+    let theme = create_mdedit_theme(&config.theme);
+
+    let Some(font) = installed_mono_fonts().first().map(|v| v.clone()) else {
+        return Err(anyhow!("Can't find any monospaced font."));
+    };
+
     #[cfg(feature = "wgpu")]
     let run_cfg = {
         let mut r = RunConfig::new()?
             .window_title("MD Edit")
             .window_icon(MD_ICON.into(), 64, 64)
+            .font_family(font)
+            .bg_color(theme.p.color_alias("container-base.bg"))
             .poll(PollTasks::default())
             .poll(PollTimers::default())
             .poll(PollRendered)
@@ -107,7 +116,6 @@ fn main() -> Result<(), Error> {
         .poll(PollRendered)
         .poll(PollQuit);
 
-    let theme = create_mdedit_theme(&config.theme);
     let mut global = GlobalState::new(config, theme);
     let mut state = Scenery::default();
 

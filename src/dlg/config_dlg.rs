@@ -244,6 +244,7 @@ pub fn event(
                         .expect("theme");
 
                     ctx.theme = create_mdedit_theme(theme);
+                    ctx.set_bg_color(ctx.theme.p.color_alias("container-base.bg"));
                     Control::Changed
                 }
                 r => r.into(),
