@@ -11,6 +11,8 @@ keywords = ["ratatui", "input", "event-loop"]
 categories = ["text-editors"]
 exclude = [".idea/*", ".gitignore", "mdedit.gif"]
 
+[lints]
+
 [features]
 default = []
 wgpu = ["rat-salsa-wgpu", "winit"]
